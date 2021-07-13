@@ -48,4 +48,5 @@ contract EscrowStorage {
     mapping(string => ResourceFees) public fixedResourceFee;
     mapping(address => WithdrawSetting) public withdrawsettings;
     mapping(address => mapping(bytes32 => Deposit)) public deposits;
+    mapping(bytes32 => address[]) public clusterUsers;
 }

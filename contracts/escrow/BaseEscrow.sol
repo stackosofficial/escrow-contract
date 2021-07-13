@@ -156,6 +156,10 @@ contract BaseEscrow is Ownable, EscrowStorage {
         if (utilisedFunds >= deposit.totalDeposit) {
             utilisedFunds = deposit.totalDeposit;
             delete deposits[depositer][clusterDns];
+            removeClusterAddresConnection(
+                clusterDns,
+                findAddressIndex(clusterDns, depositer)
+            );
         } else {
             deposit.totalDeposit = deposit.totalDeposit - utilisedFunds;
         }
@@ -280,6 +284,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
         // if (deposit.totalDeposit < depositAmount) {
         // depositAmount = depositAmount - deposit.totalDeposit;
+        addClusterAddresConnection(clusterDns, depositer);
         _pullStackTokens(depositAmount);
 
         deposit.totalDeposit = deposit.totalDeposit + depositAmount;
@@ -375,6 +380,41 @@ contract BaseEscrow is Ownable, EscrowStorage {
             withdrawAmount,
             deposit.lastTxTime
         );
+    }
+
+    function findAddressIndex(bytes32 clusterDns, address adr)
+        internal
+        view
+        returns (uint256)
+    {
+        for (uint256 i; i < clusterUsers[clusterDns].length; i++) {
+            if (clusterUsers[clusterDns][i] == adr) {
+                return i;
+            }
+        }
+    }
+
+    function settleMultipleAccounts(bytes32 clusterDns, uint256 nrOfAccounts)
+        public
+    {
+        for (uint256 i; nrOfAccounts > i; i++) {
+            settleAccounts(clusterUsers[clusterDns][i], clusterDns);
+        }
+    }
+
+    function removeClusterAddresConnection(bytes32 clusterDns, uint256 index)
+        internal
+    {
+        for (uint256 a = index; a < clusterUsers[clusterDns].length - 1; a++) {
+            clusterUsers[clusterDns][a] = clusterUsers[clusterDns][a + 1];
+        }
+        clusterUsers[clusterDns].pop();
+    }
+
+    function addClusterAddresConnection(bytes32 clusterDns, address adr)
+        internal
+    {
+        clusterUsers[clusterDns].push(adr);
     }
 
     function _calcResourceUnitsPrice(
