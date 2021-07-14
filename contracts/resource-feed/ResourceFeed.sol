@@ -53,8 +53,7 @@ contract ResourceFeed is Ownable {
         bytes32 clusterDns,
         string memory name,
         uint256 pricePerUnit,
-        uint256 dripRatePerUnit,
-        uint256 votingWeightPerUnit
+        uint256 dripRatePerUnit
     ) public returns (bool) {
         address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
         .getClusterOwner(clusterDns);
@@ -63,7 +62,6 @@ contract ResourceFeed is Ownable {
         resource.name = name;
         resource.pricePerUnit = pricePerUnit;
         resource.dripRatePerUnit = dripRatePerUnit;
-        resource.votingWeightPerUnit = votingWeightPerUnit;
         return true;
     }
 

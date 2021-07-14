@@ -11,13 +11,14 @@ contract StackEscrow is BaseEscrow {
      * @dev - constructor (being called at contract deployment)
      * @param Address of stackToken deployed contract
      * @param Address of ResourceFeed deployed contract
-     * @param Address of StackOS Controller
      * @param Address of Staking deployed contract
      * @param Address of DnsClusterMetadataStore deployed contract
-     * @param Platform Fees
      * @param Factory Contract of DEX
      * @param Router Contract of DEX
+     * @param DAO Address
+     * @param Governance Address
      * @param WETH Contract Address
+     * @param USDT Contract Address
      */
     constructor(
         address _stackToken,
@@ -49,7 +50,7 @@ contract StackEscrow is BaseEscrow {
     }
 
     /*
-     * @title Purchase the resources from STACK token
+     * @title Purchase the resources using STACK token
      * @param DNS Cluster
      * @param Number of CPU's core units to purchase
      * @param Number of Disk space units to purchase
@@ -98,7 +99,7 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public {
-        uint256 depositAmount = getResourcesPrice(
+        uint256 depositAmount = getResourcesPriceInSTACK(
             clusterDns,
             cpuCoresUnits,
             diskSpaceUnits,
@@ -123,33 +124,40 @@ contract StackEscrow is BaseEscrow {
         );
     }
 
+    /*
+     * @title Cluster Owner send a rebate in stack tokens to developers
+     * @param Amount of Stack
+     * @param Address for whom the rebate is being done
+     * @param ClusterDNS to whom the rebate will be credited
+     */
+
     function rebateAccount(
         uint256 amount,
         address account,
         bytes32 clusterDns
     ) public {
-        Deposit storage deposit = deposits[account][clusterDns];
-        deposit.totalDeposit = deposit.totalDeposit + amount;
-        // Charge the person who is doing the rebate.
-        _pullStackTokens(amount);
+        address clusterOwner = IDnsClusterMetadataStore(dnsStore)
+        .getClusterOwner(clusterDns);
+        require(clusterOwner == msg.sender, "Not the cluster owner!");
+        _rechargeAccountInternal(amount, account, clusterDns);
     }
 
     /*
-     * @title Fetches the cummulative price of Resources in STACK
+     * @title Fetches the cummulative price of Resources in USDT
      * @param Number of CPU's core units
      * @param Number of Disk space units
      * @param Number of Bandwidth units
      * @param Number of Memory units
      * @return Total resources price measured in Stack Token
      */
-    function getResourcesPrice(
+    function getResourcesPriceUSDT(
         bytes32 clusterDns,
         uint256 cpuCoresUnits,
         uint256 diskSpaceUnits,
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInStack = _calcResourceUnitsPrice(
+        uint256 amountInUSDT = _calcResourceUnitsPrice(
             clusterDns,
             "cpu",
             cpuCoresUnits
@@ -158,19 +166,16 @@ contract StackEscrow is BaseEscrow {
             _calcResourceUnitsPrice(clusterDns, "disk", diskSpaceUnits) +
             _calcResourceUnitsPrice(clusterDns, "bandwidth", bandwidthUnits);
 
-        // Introduce a to Stack converter here.
-        // Right now everything unit prices are in USD.
-
-        return amountInStack;
+        return amountInUSDT;
     }
 
     /*
-     * @title Fetches the cummulative price of Resources in ETH
+     * @title Fetches the cummulative price of Resources in USDT
      * @param Number of CPU's core units
      * @param Number of Disk space units
      * @param Number of Bandwidth units
      * @param Number of Memory units
-     * @return Total resources price measured in Ethereum
+     * @return Total resources price measured in STACK
      */
     function getResourcesPriceInSTACK(
         bytes32 clusterDns,
@@ -179,7 +184,7 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInUsdT = _calcResourceUnitsPrice(
+        uint256 amountInUSDT = _calcResourceUnitsPrice(
             clusterDns,
             "cpu",
             cpuCoresUnits
@@ -187,7 +192,7 @@ contract StackEscrow is BaseEscrow {
             _calcResourceUnitsPrice(clusterDns, "memory", memoryUnits) +
             _calcResourceUnitsPrice(clusterDns, "disk", diskSpaceUnits) +
             _calcResourceUnitsPrice(clusterDns, "bandwidth", bandwidthUnits);
-        uint256 amountInSTACK = usdtToSTACK(amountInUsdT);
+        uint256 amountInSTACK = usdtToSTACK(amountInUSDT);
         return amountInSTACK;
     }
 
@@ -197,9 +202,9 @@ contract StackEscrow is BaseEscrow {
      * @param Number of Disk space units
      * @param Number of Bandwidth units
      * @param Number of Memory units
-     * @return Total resources drip rate measured in Stack Token
+     * @return Total resources drip rate measured in USDT
      */
-    function getResourcesDripRate(
+    function getResourcesDripRateInUSDT(
         bytes32 clusterDns,
         uint256 cpuCoresUnits,
         uint256 diskSpaceUnits,
@@ -218,6 +223,34 @@ contract StackEscrow is BaseEscrow {
     }
 
     /*
+     * @title Fetches the cummulative dripRate of Resources
+     * @param Number of CPU's core units
+     * @param Number of Disk space units
+     * @param Number of Bandwidth units
+     * @param Number of Memory units
+     * @return Total resources drip rate measured in STACK
+     */
+    function getResourcesDripRateInSTACK(
+        bytes32 clusterDns,
+        uint256 cpuCoresUnits,
+        uint256 diskSpaceUnits,
+        uint256 bandwidthUnits,
+        uint256 memoryUnits
+    ) public view returns (uint256) {
+        uint256 amountInUSD = _calcResourceUnitsDripRate(
+            clusterDns,
+            "cpu",
+            cpuCoresUnits
+        ) +
+            _calcResourceUnitsDripRate(clusterDns, "memory", memoryUnits) +
+            _calcResourceUnitsDripRate(clusterDns, "disk", diskSpaceUnits) +
+            _calcResourceUnitsDripRate(clusterDns, "bandwidth", bandwidthUnits);
+
+        uint256 amountInSTACK = usdtToSTACK(amountInUSD);
+        return amountInSTACK;
+    }
+
+    /*
      * @title TopUp the user's Account with input Amount
      * @param Amount of Stack Token to TopUp the account with
      */
@@ -232,18 +265,29 @@ contract StackEscrow is BaseEscrow {
         _settleBalances(msg.sender, clusterDns);
     }
 
+    function timenow() public view returns (uint256 time) {
+        time = block.timestamp;
+    }
+
+    /*
+     * @title Withdraw user deposited Funds partially
+     * @param Amount of Stack Token user wants to withdraw
+     * @param Cluster DNS where the withdraw should be done from
+     */
+
     function setWithdrawTokenPortion(address token, uint256 percent) public {
         require(percent <= 10000, "Has to be below 10000");
-        WithdrawSetting storage withdrawsetup = withdrawsettings[msg.sender];
+        WithdrawSetting storage withdrawsetup = withdrawSettings[msg.sender];
         withdrawsetup.token = token;
         withdrawsetup.percent = percent;
     }
 
-    // /*
-    //  * @title Withdraw user deposited Funds partially
-    //  * @param Amount of Stack Token user wants to withdraw
-    //  */
-    // function withdrawFundsPartial(uint256 amount, bytes32 clusterDns) public {
-    //     _withdrawFundsPartialInternal(amount, msg.sender, clusterDns);
-    // }
+    /*
+     * @title Withdraw user deposited Funds partially
+     * @param Amount of Stack Token user wants to withdraw
+     * @param Cluster DNS where the withdraw should be done from
+     */
+    function withdrawFundsPartial(uint256 amount, bytes32 clusterDns) public {
+        _withdrawFundsPartialInternal(amount, msg.sender, clusterDns);
+    }
 }

@@ -68,17 +68,28 @@ contract BaseEscrow is Ownable, EscrowStorage {
     }
 
     /*
-     * @title Update the Platform Fees
-     * @param Updated Platform Fees
+     * @title Update the Platform Variable Fees. These fees are in percentages.
+     * @param Updated Platform Governance Fee
+     * @param Updated Platform DAO Fee
      * @dev Could only be invoked by the contract owner
      */
     function setVariableFees(uint256 _govFee, uint256 _daoFee)
         public
         onlyOwner
     {
-        daoFee = _daoFee;
         govFee = _govFee;
+        daoFee = _daoFee;
     }
+
+    /*
+     * @title Update the Platform fixed Fees. These fees are in USDT value.
+     * @param Allocated for DAO or Governance
+     * @param CPU fee in USD.
+     * @param Disk fee in USD.
+     * @param Bandwith fee in USD.
+     * @param Memory fee in USD.
+     * @dev Could only be invoked by the contract owner
+     */
 
     function setFixedFees(
         string memory allocatedFor,
@@ -94,6 +105,13 @@ contract BaseEscrow is Ownable, EscrowStorage {
         resourcefees.memoryFee = _memoryFee;
     }
 
+    /*
+     * @title Update the Platform fee receiver address
+     * @param DAO address
+     * @param Governance address
+     * @dev Could only be invoked by the contract owner
+     */
+
     function setFeeAddress(address _daoAddress, address _govAddress)
         public
         onlyOwner
@@ -105,26 +123,26 @@ contract BaseEscrow is Ownable, EscrowStorage {
     /*
      * @title Withdraw a depositer funds
      * @param Depositer Address
+     * @param ClusterDNS that is being settled
      * @dev Could only be invoked by the contract owner
      */
-    // function withDrawFundsAdmin(address depositer, uint256 node)
-    //     public
-    //     onlyOwner
-    // {
-    //     _settleBalances(depositer, node);
-    // }
+    function withDrawFundsAdmin(address depositer, bytes32 clusterDns)
+        public
+        onlyOwner
+    {
+        _settleBalances(depositer, clusterDns);
+    }
 
     /*
      * @title Settle Depositer Account
      * @param Depositer Address
+     * @param ClusterDNS that is being settled
      */
     function settleAccounts(address depositer, bytes32 clusterDns) public {
         uint256 currentTime = block.timestamp;
         Deposit storage deposit = deposits[depositer][clusterDns];
         uint256 elapsedTime = currentTime - deposit.lastTxTime;
-        // Set the current time as the lastTxTime.
         deposit.lastTxTime = currentTime;
-        // need to reset time after fuction is triggered.
 
         (
             address clusterOwner,
@@ -134,15 +152,14 @@ contract BaseEscrow is Ownable, EscrowStorage {
             ,
             ,
             uint256 qualityFactor
-        ) = IDnsClusterMetadataStore(IDnsClusterMetadataStore(dnsStore))
-        .dnsToClusterMetadata(clusterDns);
+        ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
 
-        // Convert utilised funds to STACK value.
+        // Convert utilised funds to STACK.
         uint256 utilisedFunds = elapsedTime * deposit.totalDripRatePerSecond;
         utilisedFunds = usdtToSTACK(utilisedFunds);
-        // Add fees to utilised funds.
 
-        (uint256 fixedDaoFee, uint256 fixedGovFee) = _AddFixedFees(
+        // Add fees to utilised funds.
+        (uint256 fixedDaoFee, uint256 fixedGovFee) = _AddFixedFeesAndDeduct(
             utilisedFunds,
             elapsedTime,
             deposit.cpuCoresUnits,
@@ -176,7 +193,18 @@ contract BaseEscrow is Ownable, EscrowStorage {
         );
     }
 
-    function _AddFixedFees(
+    /*
+     * @title Deduct Fixed and Variable Fees
+     * @param Utilised funds in stack
+     * @param Time since the last deposit / settelment
+     * @param CPU Units Purchaised
+     * @param Disk Space Units Purchaised
+     * @param Bandwith Units Purchaised
+     * @param Memory Units Purchaised
+     * @dev Part of the settelmet functions
+     */
+
+    function _AddFixedFeesAndDeduct(
         uint256 utilisedFunds,
         uint256 timeelapsed,
         uint256 cpuCoresUnits,
@@ -231,6 +259,12 @@ contract BaseEscrow is Ownable, EscrowStorage {
         return (daoFees, govFees);
     }
 
+    /*
+     * @title Part of AddFixedFeesAndDeduct
+     * @param Utilised funds in stack
+     * @dev Part of the settelmet functions
+     */
+
     function _AddVariablesFees(uint256 utilisedFunds)
         internal
         view
@@ -242,6 +276,18 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
         return (forDao, forGov);
     }
+
+    /*
+     * @title Deposit Stack to start using the cluster
+     * @param Cluster DNS
+     * @param Amount of CPU Units that will be used
+     * @param Amount of Disk Space that will be used
+     * @param Amount of Bandwith that will be used
+     * @param Amount of Memory that will be used
+     * @param Amount of Stack to Deposit to use these recources.
+     * @param The address of resource buyer.
+     * @dev Part of the settelmet functions
+     */
 
     function _createDepositInternal(
         bytes32 clusterDns,
@@ -337,21 +383,13 @@ contract BaseEscrow is Ownable, EscrowStorage {
         deposit.totalDeposit = deposit.totalDeposit - amount;
     }
 
-    // Is this a Refund function???
-
     function _settleBalances(address depositer, bytes32 clusterDns) internal {
         uint256 currentTime = block.timestamp;
         Deposit storage deposit = deposits[depositer][clusterDns];
         uint256 elapsedTime = currentTime - deposit.lastTxTime;
         deposit.lastTxTime = currentTime;
-        uint256 utilisedFunds = elapsedTime * deposit.totalDripRatePerSecond;
+
         uint256 withdrawAmount;
-        if (utilisedFunds >= deposit.totalDeposit) {
-            utilisedFunds = deposit.totalDeposit;
-            withdrawAmount = 0;
-        } else {
-            withdrawAmount = deposit.totalDeposit - utilisedFunds;
-        }
 
         (
             address clusterOwner,
@@ -363,6 +401,36 @@ contract BaseEscrow is Ownable, EscrowStorage {
             uint256 qualityFactor
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
 
+        // Convert utilised funds to STACK.
+        uint256 utilisedFunds = elapsedTime * deposit.totalDripRatePerSecond;
+        utilisedFunds = usdtToSTACK(utilisedFunds);
+
+        // Add fees to utilised funds.
+        (uint256 fixedDaoFee, uint256 fixedGovFee) = _AddFixedFeesAndDeduct(
+            utilisedFunds,
+            elapsedTime,
+            deposit.cpuCoresUnits,
+            deposit.diskSpaceUnits,
+            deposit.bandwidthUnits,
+            deposit.memoryUnits
+        );
+
+        utilisedFunds = utilisedFunds + fixedDaoFee + fixedGovFee;
+
+        if (utilisedFunds >= deposit.totalDeposit) {
+            utilisedFunds = deposit.totalDeposit;
+            withdrawAmount = 0;
+            delete deposits[depositer][clusterDns];
+            removeClusterAddresConnection(
+                clusterDns,
+                findAddressIndex(clusterDns, depositer)
+            );
+            utilisedFunds = utilisedFunds - (fixedDaoFee + fixedGovFee);
+        } else {
+            utilisedFunds = utilisedFunds - (fixedDaoFee + fixedGovFee);
+            withdrawAmount = deposit.totalDeposit - utilisedFunds;
+        }
+
         _withdraw(
             utilisedFunds,
             withdrawAmount,
@@ -372,8 +440,6 @@ contract BaseEscrow is Ownable, EscrowStorage {
             qualityFactor
         );
 
-        delete deposits[depositer][clusterDns];
-
         emit WITHDRAW(
             depositer,
             deposit.totalDeposit,
@@ -382,17 +448,11 @@ contract BaseEscrow is Ownable, EscrowStorage {
         );
     }
 
-    function findAddressIndex(bytes32 clusterDns, address adr)
-        internal
-        view
-        returns (uint256)
-    {
-        for (uint256 i; i < clusterUsers[clusterDns].length; i++) {
-            if (clusterUsers[clusterDns][i] == adr) {
-                return i;
-            }
-        }
-    }
+    /*
+     * @title Settle multiple accounts in one transaction
+     * @param Cluster DNS
+     * @param amount of accounts to settle.
+     */
 
     function settleMultipleAccounts(bytes32 clusterDns, uint256 nrOfAccounts)
         public
@@ -401,6 +461,32 @@ contract BaseEscrow is Ownable, EscrowStorage {
             settleAccounts(clusterUsers[clusterDns][i], clusterDns);
         }
     }
+
+    /*
+     * @title Find the index for ClusterDNS => Address link
+     * @param Cluster DNS
+     * @param Depositer Address
+     * @dev Part of the settelmet function
+     */
+
+    function findAddressIndex(bytes32 clusterDns, address _address)
+        internal
+        view
+        returns (uint256)
+    {
+        for (uint256 i; i < clusterUsers[clusterDns].length; i++) {
+            if (clusterUsers[clusterDns][i] == _address) {
+                return i;
+            }
+        }
+    }
+
+    /*
+     * @title Remove link between ClusterDNS => Address
+     * @param Cluster DNS
+     * @param List index
+     * @dev Part of the settelmet function
+     */
 
     function removeClusterAddresConnection(bytes32 clusterDns, uint256 index)
         internal
@@ -411,23 +497,36 @@ contract BaseEscrow is Ownable, EscrowStorage {
         clusterUsers[clusterDns].pop();
     }
 
-    function addClusterAddresConnection(bytes32 clusterDns, address adr)
+    /*
+     * @title Create link between ClusterDNS => Address
+     * @param Cluster DNS
+     * @param Deployer wallet address
+     * @dev Part of deposit function
+     */
+
+    function addClusterAddresConnection(bytes32 clusterDns, address _address)
         internal
     {
-        clusterUsers[clusterDns].push(adr);
+        clusterUsers[clusterDns].push(_address);
     }
+
+    /*
+     * @title Create link between ClusterDNS => Address
+     * @param Cluster DNS
+     * @param Deployer wallet address
+     * @dev Part of deposit function
+     */
 
     function _calcResourceUnitsPrice(
         bytes32 clusterDns,
         string memory resourceName,
         uint256 resourceUnits
     ) internal view returns (uint256) {
-        uint256 pricePerUnit = IResourceFeed(resourceFeed).getResourcePrice(
+        uint256 pricePerUnitUSDT = IResourceFeed(resourceFeed).getResourcePrice(
             clusterDns,
             resourceName
         );
-        uint256 priceInStack = stackToUSDT(pricePerUnit);
-        return priceInStack * resourceUnits;
+        return pricePerUnitUSDT * resourceUnits;
     }
 
     function _calcResourceUnitsDripRate(
@@ -492,23 +591,6 @@ contract BaseEscrow is Ownable, EscrowStorage {
         TOKENVALUE = _getQuote(ETHVALUE, weth, _token);
     }
 
-    function _swapTokensInternal(
-        address _FromTokenContractAddress,
-        address _ToTokenContractAddress,
-        uint256 amountOutMin
-    ) internal returns (uint256 tokenBought) {
-        address[] memory path = new address[](2);
-        path[0] = _FromTokenContractAddress;
-        path[1] = _ToTokenContractAddress;
-
-        tokenBought = router.swapExactETHForTokens{value: msg.value}(
-            amountOutMin,
-            path,
-            address(this),
-            block.timestamp + 1200
-        )[path.length - 1];
-    }
-
     function _withdraw(
         uint256 utilisedFunds,
         uint256 withdrawAmount,
@@ -525,7 +607,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
             (10**18);
 
         if (utilisedFundsAfterQualityCheck > 0) {
-            WithdrawSetting storage withdrawsetup = withdrawsettings[
+            WithdrawSetting storage withdrawsetup = withdrawSettings[
                 clusterOwner
             ];
             if (withdrawsetup.percent > 0) {
@@ -533,19 +615,26 @@ contract BaseEscrow is Ownable, EscrowStorage {
                     withdrawsetup.percent) / 10000;
                 uint256 stackWithdraw = utilisedFundsAfterQualityCheck -
                     stacktoToken;
-                // Uniswap Swap Here. NEEDS TESTING!
-                _swapTokens(stackToken, withdrawsetup.token, 0, stacktoToken);
-                IERC20(withdrawsetup.token).transfer(
-                    clusterOwner,
-                    IERC20(withdrawsetup.token).balanceOf(address(this))
-                );
+
+                // IERC20(stackToken).approve(
+                //     address(router),
+                //     999999999999999999999999
+                // );
+                // _swapTokens(
+                //     stackToken,
+                //     withdrawsetup.token,
+                //     0,
+                //     stacktoToken,
+                //     clusterOwner
+                // );
                 IERC20(stackToken).transfer(clusterOwner, stackWithdraw);
+            } else {
+                IERC20(stackToken).transfer(
+                    clusterOwner,
+                    utilisedFundsAfterQualityCheck
+                );
             }
-            // utilisedFundsAfterQualityCheck
-            IERC20(stackToken).transfer(
-                clusterOwner,
-                utilisedFundsAfterQualityCheck
-            );
+
             uint256 penalty = utilisedFunds - utilisedFundsAfterQualityCheck;
             if (penalty > 0) {
                 IERC20(stackToken).transfer(dao, penalty);
@@ -565,7 +654,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
         address _FromTokenContractAddress,
         address _ToTokenContractAddress,
         uint256 amountOutMin,
-        uint256 amountInMax
+        uint256 amountInMax,
+        address forWallet
     ) internal returns (uint256 tokenBought) {
         address[] memory path = new address[](2);
         path[0] = _FromTokenContractAddress;
@@ -575,7 +665,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
             amountOutMin,
             amountInMax,
             path,
-            address(this),
+            forWallet,
             block.timestamp + 1200
         )[path.length - 1];
     }
