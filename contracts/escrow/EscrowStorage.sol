@@ -34,6 +34,19 @@ contract EscrowStorage {
         uint256 percent;
     }
 
+    struct ResourceLimits {
+        uint256 cpuCoresUnits;
+        uint256 diskSpaceUnits;
+        uint256 bandwidthUnits;
+        uint256 memoryUnits;
+    }
+    struct ResourceState {
+        uint256 cpuCoresUnits;
+        uint256 diskSpaceUnits;
+        uint256 bandwidthUnits;
+        uint256 memoryUnits;
+    }
+
     struct Deposit {
         uint256 cpuCoresUnits;
         uint256 diskSpaceUnits;

@@ -136,6 +136,7 @@ contract Staking is Ownable {
             uint256 upvotes,
             uint256 downvotes,
             bool isDefaulter,
+            ,
 
         ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
             stake.dns
@@ -182,6 +183,7 @@ contract Staking is Ownable {
             uint256 upvotes,
             ,
             bool isDefaulter,
+            ,
 
         ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
             stake.dns

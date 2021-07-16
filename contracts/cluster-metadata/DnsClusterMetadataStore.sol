@@ -19,6 +19,7 @@ contract DnsClusterMetadataStore is Ownable {
         uint256 downvotes;
         bool isDefaulter;
         uint256 qualityFactor;
+        bool active;
     }
 
     mapping(bytes32 => mapping(address => uint256)) public clusterUpvotes;
@@ -79,10 +80,16 @@ contract DnsClusterMetadataStore is Ownable {
             0,
             0,
             false,
-            100
+            100,
+            true
         );
 
         dnsToClusterMetadata[_dns] = metadata;
+    }
+
+    function changeClusterStatus(bytes32 _dns, bool _status) public {
+        require(dnsToClusterMetadata[_dns].clusterOwner == msg.sender);
+        dnsToClusterMetadata[_dns].active = _status;
     }
 
     /*

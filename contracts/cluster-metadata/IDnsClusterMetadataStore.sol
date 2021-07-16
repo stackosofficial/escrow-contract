@@ -11,7 +11,8 @@ interface IDnsClusterMetadataStore {
             uint256,
             uint256,
             bool,
-            uint256
+            uint256,
+            bool
         );
 
     function addDnsToClusterEntry(

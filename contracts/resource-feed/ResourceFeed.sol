@@ -95,7 +95,7 @@ contract ResourceFeed is Ownable {
     // This should be done elsewhere.
     // During the settelment we will utilization + fee price.
     // Deduction from the client not the owner.
-    function setResourcePrice(
+    function setResourcePriceUSDT(
         bytes32 clusterDns,
         string memory name,
         uint256 pricePerUnit
@@ -118,7 +118,7 @@ contract ResourceFeed is Ownable {
      * @param name of the resource
      * @return Resource unit price
      */
-    function getResourcePrice(bytes32 clusterDns, string calldata name)
+    function getResourcePriceUSDT(bytes32 clusterDns, string calldata name)
         external
         view
         returns (uint256)
@@ -133,7 +133,7 @@ contract ResourceFeed is Ownable {
      * @param New DripRate for the resource
      * @return True if successfully invoked
      */
-    function setResourceDripRate(
+    function setResourceDripRateUSDT(
         bytes32 clusterDns,
         string memory name,
         uint256 dripRatePerUnit
@@ -156,7 +156,7 @@ contract ResourceFeed is Ownable {
      * @param name of the resource
      * @return Resource Drip rate
      */
-    function getResourceDripRate(bytes32 clusterDns, string calldata name)
+    function getResourceDripRateUSDT(bytes32 clusterDns, string calldata name)
         external
         view
         returns (uint256)

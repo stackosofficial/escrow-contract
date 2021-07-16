@@ -157,14 +157,18 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInUSDT = _calcResourceUnitsPrice(
+        uint256 amountInUSDT = _calcResourceUnitsPriceUSDT(
             clusterDns,
             "cpu",
             cpuCoresUnits
         ) +
-            _calcResourceUnitsPrice(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsPrice(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsPrice(clusterDns, "bandwidth", bandwidthUnits);
+            _calcResourceUnitsPriceUSDT(clusterDns, "memory", memoryUnits) +
+            _calcResourceUnitsPriceUSDT(clusterDns, "disk", diskSpaceUnits) +
+            _calcResourceUnitsPriceUSDT(
+                clusterDns,
+                "bandwidth",
+                bandwidthUnits
+            );
 
         return amountInUSDT;
     }
@@ -184,14 +188,18 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInUSDT = _calcResourceUnitsPrice(
+        uint256 amountInUSDT = _calcResourceUnitsPriceUSDT(
             clusterDns,
             "cpu",
             cpuCoresUnits
         ) +
-            _calcResourceUnitsPrice(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsPrice(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsPrice(clusterDns, "bandwidth", bandwidthUnits);
+            _calcResourceUnitsPriceUSDT(clusterDns, "memory", memoryUnits) +
+            _calcResourceUnitsPriceUSDT(clusterDns, "disk", diskSpaceUnits) +
+            _calcResourceUnitsPriceUSDT(
+                clusterDns,
+                "bandwidth",
+                bandwidthUnits
+            );
         uint256 amountInSTACK = usdtToSTACK(amountInUSDT);
         return amountInSTACK;
     }
@@ -211,14 +219,18 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInUSD = _calcResourceUnitsDripRate(
+        uint256 amountInUSD = _calcResourceUnitsDripRateUSDT(
             clusterDns,
             "cpu",
             cpuCoresUnits
         ) +
-            _calcResourceUnitsDripRate(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsDripRate(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsDripRate(clusterDns, "bandwidth", bandwidthUnits);
+            _calcResourceUnitsDripRateUSDT(clusterDns, "memory", memoryUnits) +
+            _calcResourceUnitsDripRateUSDT(clusterDns, "disk", diskSpaceUnits) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                "bandwidth",
+                bandwidthUnits
+            );
         return amountInUSD;
     }
 
@@ -237,14 +249,18 @@ contract StackEscrow is BaseEscrow {
         uint256 bandwidthUnits,
         uint256 memoryUnits
     ) public view returns (uint256) {
-        uint256 amountInUSD = _calcResourceUnitsDripRate(
+        uint256 amountInUSD = _calcResourceUnitsDripRateUSDT(
             clusterDns,
             "cpu",
             cpuCoresUnits
         ) +
-            _calcResourceUnitsDripRate(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsDripRate(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsDripRate(clusterDns, "bandwidth", bandwidthUnits);
+            _calcResourceUnitsDripRateUSDT(clusterDns, "memory", memoryUnits) +
+            _calcResourceUnitsDripRateUSDT(clusterDns, "disk", diskSpaceUnits) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                "bandwidth",
+                bandwidthUnits
+            );
 
         uint256 amountInSTACK = usdtToSTACK(amountInUSD);
         return amountInSTACK;
@@ -262,11 +278,7 @@ contract StackEscrow is BaseEscrow {
     //  * @title Withdraw user total deposited Funds & settles his pending balances
     //  */
     function withdrawFunds(bytes32 clusterDns) public {
-        _settleBalances(msg.sender, clusterDns);
-    }
-
-    function timenow() public view returns (uint256 time) {
-        time = block.timestamp;
+        _settleAndWithdraw(msg.sender, clusterDns, 0, true);
     }
 
     /*
@@ -288,6 +300,6 @@ contract StackEscrow is BaseEscrow {
      * @param Cluster DNS where the withdraw should be done from
      */
     function withdrawFundsPartial(uint256 amount, bytes32 clusterDns) public {
-        _withdrawFundsPartialInternal(amount, msg.sender, clusterDns);
+        _settleAndWithdraw(msg.sender, clusterDns, amount, false);
     }
 }

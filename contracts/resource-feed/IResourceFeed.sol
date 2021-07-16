@@ -1,12 +1,12 @@
 pragma solidity ^0.6.12;
 
 interface IResourceFeed {
-    function getResourcePrice(bytes32 clusterDns, string calldata name)
+    function getResourcePriceUSDT(bytes32 clusterDns, string calldata name)
         external
         view
         returns (uint256);
 
-    function getResourceDripRate(bytes32 clusterDns, string calldata name)
+    function getResourceDripRateUSDT(bytes32 clusterDns, string calldata name)
         external
         view
         returns (uint256);
