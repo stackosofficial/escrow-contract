@@ -22,8 +22,6 @@ Select the project you created
 
 Go under settings
 
-Select the Testnet you want to run it on.
-
 Copy paste the link "https://mainnet.infura.io/v3/...."
 
 Start Ganache-CLI mainet hardfork
