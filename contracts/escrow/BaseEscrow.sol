@@ -10,6 +10,7 @@ import "../resource-feed/IResourceFeed.sol";
 import "./uniswap/IUniswapV2Pair.sol";
 import "./uniswap/IUniswapV2Router02.sol";
 import "./uniswap/IUniswapV2Factory.sol";
+import "../oracle/IPriceOracle.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /// @title BaseEscrow is parent contract of Stack Escrow
@@ -53,7 +54,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
         address _dao,
         address _gov,
         address _weth,
-        address _usdt
+        address _usdt,
+        address _oracle
     ) public {
         stackToken = _stackToken;
         resourceFeed = _resourceFeed;
@@ -65,6 +67,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         dao = _dao;
         gov = _gov;
         usdt = _usdt;
+        oracle = _oracle;
     }
 
     /*
@@ -160,14 +163,18 @@ contract BaseEscrow is Ownable, EscrowStorage {
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
 
         uint256 MaxPossibleElapsedTime = deposit.totalDeposit /
-            usdtToSTACK(deposit.totalDripRatePerSecond);
+            IPriceOracle(oracle).usdtToSTACKOracle(
+                deposit.totalDripRatePerSecond
+            );
 
         if (elapsedTime > MaxPossibleElapsedTime) {
             elapsedTime = MaxPossibleElapsedTime;
             utilisedFunds = deposit.totalDeposit;
         } else {
             utilisedFunds = elapsedTime * deposit.totalDripRatePerSecond;
-            utilisedFunds = usdtToSTACK(utilisedFunds);
+            utilisedFunds = IPriceOracle(oracle).usdtToSTACKOracle(
+                utilisedFunds
+            );
         }
         print3 = elapsedTime;
 

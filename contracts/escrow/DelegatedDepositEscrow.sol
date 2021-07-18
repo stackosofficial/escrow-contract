@@ -13,7 +13,8 @@ contract DelegatedDepositEscrow is BaseEscrow {
         address _dao,
         address _governance,
         address _weth,
-        address _usdt
+        address _usdt,
+        address _oracle
     )
         public
         BaseEscrow(
@@ -26,7 +27,8 @@ contract DelegatedDepositEscrow is BaseEscrow {
             _dao,
             _governance,
             _weth,
-            _usdt
+            _usdt,
+            _oracle
         )
     {}
 

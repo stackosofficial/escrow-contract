@@ -15,6 +15,10 @@ const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const clusterDns =
   "0x74657374646e7300000000000000000000000000000000000000000000000000";
+const OracleFeed = artifacts.require("StackOracle");
+
+const lpstack = "0x635b58600509acFe70e0BD4c4935c08182774e58";
+const lpusdt = "0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852";
 
 contract("StackEscrow", (accounts) => {
   describe("Contract Deployment", async () => {
@@ -31,6 +35,10 @@ contract("StackEscrow", (accounts) => {
       await resourceFeed.setclusterMetadataStore(dnsCluster.address);
     });
 
+    it("Oracle Contract Has been deployed", async () => {
+      oracleFeed = await OracleFeed.new(lpstack, lpusdt);
+    });
+
     it("StackEscrow Contract Has been deployed", async () => {
       daoAddress = accounts[9];
       govAddress = accounts[8];
@@ -44,7 +52,8 @@ contract("StackEscrow", (accounts) => {
         daoAddress,
         govAddress,
         WETH,
-        USDT
+        USDT,
+        oracleFeed.address
       );
       assert.equal((await stackEscrow.address) !== "", true);
     });
@@ -225,6 +234,11 @@ contract("StackEscrow", (accounts) => {
     it("Taking a Snapshot Before Time Testing.", async () => {
       snapshot = await timeMachine.takeSnapshot();
       snapshotId = snapshot["result"];
+    });
+
+    it("Update and roll time.", async () => {
+      await timeMachine.advanceTimeAndBlock(60 * 60 * 24);
+      await oracleFeed.update();
     });
 
     it("SettleAccounts()", async () => {

@@ -30,7 +30,8 @@ contract StackEscrow is BaseEscrow {
         address _dao,
         address _gov,
         address _weth,
-        address _usdt
+        address _usdt,
+        address _oracle
     )
         public
         BaseEscrow(
@@ -43,7 +44,8 @@ contract StackEscrow is BaseEscrow {
             _dao,
             _gov,
             _weth,
-            _usdt
+            _usdt,
+            _oracle
         )
     {
         stackToken = _stackToken;

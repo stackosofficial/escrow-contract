@@ -19,6 +19,7 @@ contract EscrowStorage {
     IUniswapV2Router02 public router;
     address public weth;
     address public usdt;
+    address public oracle;
 
     struct ResourceFees {
         uint256 cpuFee;
