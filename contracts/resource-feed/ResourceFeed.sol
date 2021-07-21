@@ -14,7 +14,6 @@ contract ResourceFeed is Ownable {
 
     struct Resource {
         string name;
-        uint256 pricePerUnit;
         uint256 dripRatePerUnit;
         uint256 votingWeightPerUnit;
     }
@@ -34,7 +33,6 @@ contract ResourceFeed is Ownable {
     /*
      * @title Add a new resource component
      * @param name of the resource
-     * @param Price of the resource for single unit
      * @param Drip Rate for a single unit
      * @param Vote weightage of a single unit
      * @return True if successfully invoked
@@ -52,7 +50,6 @@ contract ResourceFeed is Ownable {
     function addResource(
         bytes32 clusterDns,
         string memory name,
-        uint256 pricePerUnit,
         uint256 dripRatePerUnit
     ) public returns (bool) {
         address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
@@ -60,7 +57,6 @@ contract ResourceFeed is Ownable {
         require(clusterOwner == msg.sender, "Not the cluster owner!");
         Resource storage resource = resources[clusterDns][name];
         resource.name = name;
-        resource.pricePerUnit = pricePerUnit;
         resource.dripRatePerUnit = dripRatePerUnit;
         return true;
     }
@@ -80,51 +76,6 @@ contract ResourceFeed is Ownable {
         require(clusterOwner == msg.sender, "Not the cluster owner!");
         delete resources[clusterDns][name];
         return true;
-    }
-
-    /*
-     * @title Update resource's unit price
-     * @param name of the resource
-     * @param New Price of the resource for single unit
-     * @return True if successfully invoked
-     * @dev Could only be invoked by the contract owner
-     */
-
-    //  Cluster owner can only set the price!!
-    // Add the variable and fix price to whatever fee the cluster owner sets.
-    // This should be done elsewhere.
-    // During the settelment we will utilization + fee price.
-    // Deduction from the client not the owner.
-    function setResourcePriceUSDT(
-        bytes32 clusterDns,
-        string memory name,
-        uint256 pricePerUnit
-    ) public returns (bool) {
-        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
-        require(clusterOwner == msg.sender, "Not the cluster owner!");
-        Resource storage resource = resources[clusterDns][name];
-        require(
-            keccak256(abi.encodePacked(resource.name)) ==
-                keccak256(abi.encodePacked(name)),
-            "Resource not added."
-        );
-        resource.pricePerUnit = pricePerUnit;
-        return true;
-    }
-
-    /*
-     * @title Fetches a Resource's Unit price
-     * @param name of the resource
-     * @return Resource unit price
-     */
-    function getResourcePriceUSDT(bytes32 clusterDns, string calldata name)
-        external
-        view
-        returns (uint256)
-    {
-        Resource storage resource = resources[clusterDns][name];
-        return resource.pricePerUnit;
     }
 
     /*

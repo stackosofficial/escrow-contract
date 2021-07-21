@@ -6,26 +6,27 @@ contract EscrowStorage {
     address public stackToken;
     address public resourceFeed;
     address public staking;
-    uint256 public ethEarned;
-    uint256 public stackEarned;
-    uint256 public dripRatePerSecond;
     address public dao;
     address public gov;
     uint256 public govFee;
     uint256 public daoFee;
-    uint256 internal EXP = 10**18;
+    uint256 public communityDeposits;
     address public dnsStore;
     IUniswapV2Factory public factory;
     IUniswapV2Router02 public router;
-    address public weth;
-    address public usdt;
-    address public oracle;
+    address internal weth;
+    address internal usdt;
+    address internal oracle;
 
     struct ResourceFees {
-        uint256 cpuFee;
-        uint256 diskFee;
-        uint256 bandwidthFee;
-        uint256 memoryFee;
+        uint256 resourceOneUnitsFee; // cpuCoresUnits
+        uint256 resourceTwoUnitsFee; // diskSpaceUnits
+        uint256 resourceThreeUnitsFee; // bandwidthUnits
+        uint256 resourceFourUnitsFee; // memoryUnits
+        uint256 resourceFiveUnitsFee;
+        uint256 resourceSixUnitsFee;
+        uint256 resourceSevenUnitsFee;
+        uint256 resourceEightUnitsFee;
     }
 
     // Address of Token contract.
@@ -35,30 +36,33 @@ contract EscrowStorage {
         uint256 percent;
     }
 
-    struct ResourceLimits {
-        uint256 cpuCoresUnits;
-        uint256 diskSpaceUnits;
-        uint256 bandwidthUnits;
-        uint256 memoryUnits;
-    }
-    struct ResourceState {
-        uint256 cpuCoresUnits;
-        uint256 diskSpaceUnits;
-        uint256 bandwidthUnits;
-        uint256 memoryUnits;
+    struct ResourceUnits {
+        uint256 resourceOneUnits; // cpuCoresUnits
+        uint256 resourceTwoUnits; // diskSpaceUnits
+        uint256 resourceThreeUnits; // bandwidthUnits
+        uint256 resourceFourUnits; // memoryUnits
+        uint256 resourceFiveUnits;
+        uint256 resourceSixUnits;
+        uint256 resourceSevenUnits;
+        uint256 resourceEightUnits;
     }
 
     struct Deposit {
-        uint256 cpuCoresUnits;
-        uint256 diskSpaceUnits;
-        uint256 bandwidthUnits;
-        uint256 memoryUnits;
+        uint256 resourceOneUnits; // cpuCoresUnits
+        uint256 resourceTwoUnits; // diskSpaceUnits
+        uint256 resourceThreeUnits; // bandwidthUnits
+        uint256 resourceFourUnits; // memoryUnits
+        uint256 resourceFiveUnits;
+        uint256 resourceSixUnits;
+        uint256 resourceSevenUnits;
+        uint256 resourceEightUnits;
         uint256 totalDeposit;
         uint256 lastTxTime;
-        bool isStackToken;
         uint256 totalDripRatePerSecond;
+        uint256 notWithdrawable;
     }
 
+    mapping(uint16 => string) public resourceVar;
     mapping(string => ResourceFees) public fixedResourceFee;
     mapping(address => WithdrawSetting) public withdrawSettings;
     mapping(address => mapping(bytes32 => Deposit)) public deposits;

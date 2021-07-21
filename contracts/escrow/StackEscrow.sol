@@ -1,5 +1,5 @@
 pragma solidity ^0.6.12;
-
+pragma experimental ABIEncoderV2;
 import "./BaseEscrow.sol";
 
 // /// @title StackEscrow is derived from the BaseEscrow Contract
@@ -63,10 +63,7 @@ contract StackEscrow is BaseEscrow {
      */
     function updateResourcesByStackAmount(
         bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits,
+        ResourceUnits memory resourceUnits,
         uint256 depositAmount
     ) public {
         Deposit storage deposit = deposits[msg.sender][clusterDns];
@@ -76,12 +73,11 @@ contract StackEscrow is BaseEscrow {
 
         _createDepositInternal(
             clusterDns,
-            cpuCoresUnits,
-            diskSpaceUnits,
-            bandwidthUnits,
-            memoryUnits,
+            resourceUnits,
             depositAmount,
-            msg.sender
+            msg.sender,
+            true,
+            false
         );
     }
 
@@ -96,17 +92,11 @@ contract StackEscrow is BaseEscrow {
      */
     function updateResourcesFromStack(
         bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
+        ResourceUnits memory resourceUnits
     ) public {
         uint256 depositAmount = getResourcesPriceInSTACK(
             clusterDns,
-            cpuCoresUnits,
-            diskSpaceUnits,
-            bandwidthUnits,
-            memoryUnits
+            resourceUnits
         );
         {
             Deposit storage deposit = deposits[msg.sender][clusterDns];
@@ -117,12 +107,11 @@ contract StackEscrow is BaseEscrow {
 
         _createDepositInternal(
             clusterDns,
-            cpuCoresUnits,
-            diskSpaceUnits,
-            bandwidthUnits,
-            memoryUnits,
+            resourceUnits,
             depositAmount,
-            msg.sender
+            msg.sender,
+            true,
+            false
         );
     }
 
@@ -131,48 +120,25 @@ contract StackEscrow is BaseEscrow {
      * @param Amount of Stack
      * @param Address for whom the rebate is being done
      * @param ClusterDNS to whom the rebate will be credited
+     * @param Specify if the funds are withdrawable
      */
 
     function rebateAccount(
         uint256 amount,
         address account,
-        bytes32 clusterDns
+        bytes32 clusterDns,
+        bool withdrawable
     ) public {
         address clusterOwner = IDnsClusterMetadataStore(dnsStore)
         .getClusterOwner(clusterDns);
         require(clusterOwner == msg.sender, "Not the cluster owner!");
-        _rechargeAccountInternal(amount, account, clusterDns);
-    }
-
-    /*
-     * @title Fetches the cummulative price of Resources in USDT
-     * @param Number of CPU's core units
-     * @param Number of Disk space units
-     * @param Number of Bandwidth units
-     * @param Number of Memory units
-     * @return Total resources price measured in Stack Token
-     */
-    function getResourcesPriceUSDT(
-        bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
-    ) public view returns (uint256) {
-        uint256 amountInUSDT = _calcResourceUnitsPriceUSDT(
+        _rechargeAccountInternal(
+            amount,
+            account,
             clusterDns,
-            "cpu",
-            cpuCoresUnits
-        ) +
-            _calcResourceUnitsPriceUSDT(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsPriceUSDT(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsPriceUSDT(
-                clusterDns,
-                "bandwidth",
-                bandwidthUnits
-            );
-
-        return amountInUSDT;
+            withdrawable,
+            false
+        );
     }
 
     /*
@@ -185,55 +151,15 @@ contract StackEscrow is BaseEscrow {
      */
     function getResourcesPriceInSTACK(
         bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
+        ResourceUnits memory resourceUnits
     ) public view returns (uint256) {
-        uint256 amountInUSDT = _calcResourceUnitsPriceUSDT(
+        uint256 amountInUSDT = getResourcesDripRateInUSDT(
             clusterDns,
-            "cpu",
-            cpuCoresUnits
-        ) +
-            _calcResourceUnitsPriceUSDT(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsPriceUSDT(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsPriceUSDT(
-                clusterDns,
-                "bandwidth",
-                bandwidthUnits
-            );
+            resourceUnits
+        );
+
         uint256 amountInSTACK = usdtToSTACK(amountInUSDT);
         return amountInSTACK;
-    }
-
-    /*
-     * @title Fetches the cummulative dripRate of Resources
-     * @param Number of CPU's core units
-     * @param Number of Disk space units
-     * @param Number of Bandwidth units
-     * @param Number of Memory units
-     * @return Total resources drip rate measured in USDT
-     */
-    function getResourcesDripRateInUSDT(
-        bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
-    ) public view returns (uint256) {
-        uint256 amountInUSD = _calcResourceUnitsDripRateUSDT(
-            clusterDns,
-            "cpu",
-            cpuCoresUnits
-        ) +
-            _calcResourceUnitsDripRateUSDT(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsDripRateUSDT(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "bandwidth",
-                bandwidthUnits
-            );
-        return amountInUSD;
     }
 
     /*
@@ -246,25 +172,13 @@ contract StackEscrow is BaseEscrow {
      */
     function getResourcesDripRateInSTACK(
         bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
+        ResourceUnits memory resourceUnits
     ) public view returns (uint256) {
-        uint256 amountInUSD = _calcResourceUnitsDripRateUSDT(
+        uint256 amountInUSDT = getResourcesDripRateInUSDT(
             clusterDns,
-            "cpu",
-            cpuCoresUnits
-        ) +
-            _calcResourceUnitsDripRateUSDT(clusterDns, "memory", memoryUnits) +
-            _calcResourceUnitsDripRateUSDT(clusterDns, "disk", diskSpaceUnits) +
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "bandwidth",
-                bandwidthUnits
-            );
-
-        uint256 amountInSTACK = usdtToSTACK(amountInUSD);
+            resourceUnits
+        );
+        uint256 amountInSTACK = usdtToSTACK(amountInUSDT);
         return amountInSTACK;
     }
 
@@ -273,7 +187,7 @@ contract StackEscrow is BaseEscrow {
      * @param Amount of Stack Token to TopUp the account with
      */
     function rechargeAccount(uint256 amount, bytes32 clusterDns) public {
-        _rechargeAccountInternal(amount, msg.sender, clusterDns);
+        _rechargeAccountInternal(amount, msg.sender, clusterDns, true, false);
     }
 
     /*
@@ -303,5 +217,65 @@ contract StackEscrow is BaseEscrow {
      */
     function withdrawFundsPartial(uint256 amount, bytes32 clusterDns) public {
         _settleAndWithdraw(msg.sender, clusterDns, amount, false);
+    }
+
+    /*
+     * @title Contrubute Stack tokens for issuing grants
+     * @param Amount of Stack
+     */
+
+    function communityDeposit(uint256 amount) public {
+        _pullStackTokens(amount);
+        communityDeposits = communityDeposits.add(amount);
+    }
+
+    /*
+     * @title Issuing a grant to a new account
+     * @param address of grant reciever
+     * @param Amount of Stack issued as grant
+     * @param Resource amount
+     * @param Resource amount
+     * @param Resource amount
+     * @param Resource amount
+     * @param Resource amount
+     */
+
+    function issueGrantNewAccount(
+        address developer,
+        uint256 amount,
+        bytes32 clusterDns,
+        ResourceUnits memory resourceUnits
+    ) public onlyOwner {
+        require(amount <= communityDeposits, "Over deposit limit");
+        Deposit storage deposit = deposits[developer][clusterDns];
+        require(deposit.lastTxTime == 0);
+        require(deposit.totalDeposit == 0);
+        require(amount > 0);
+        communityDeposits = communityDeposits - amount;
+        _createDepositInternal(
+            clusterDns,
+            resourceUnits,
+            amount,
+            developer,
+            false,
+            true
+        );
+    }
+
+    /*
+     * @title Issuing a grant user with an existing account.
+     * @param Address of grant reciever
+     * @param Amount of Stack issued as grant
+     * @param ClusterDNS
+     */
+
+    function issueGrantRechargeAccount(
+        address developer,
+        uint256 amount,
+        bytes32 clusterDns
+    ) public onlyOwner {
+        require(amount <= communityDeposits, "Over deposit limit");
+        communityDeposits = communityDeposits - amount;
+        _rechargeAccountInternal(amount, developer, clusterDns, false, true);
     }
 }

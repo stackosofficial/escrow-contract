@@ -96,16 +96,20 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
     function setFixedFees(
         string memory allocatedFor,
-        uint256 _cpuFee,
-        uint256 _diskFee,
-        uint256 _bandwidthFee,
-        uint256 _memoryFee
+        ResourceFees memory resourceUnits
     ) public onlyOwner {
         ResourceFees storage resourcefees = fixedResourceFee[allocatedFor];
-        resourcefees.cpuFee = _cpuFee;
-        resourcefees.diskFee = _diskFee;
-        resourcefees.bandwidthFee = _bandwidthFee;
-        resourcefees.memoryFee = _memoryFee;
+        resourcefees.resourceOneUnitsFee = resourceUnits.resourceOneUnitsFee;
+        resourcefees.resourceTwoUnitsFee = resourceUnits.resourceTwoUnitsFee;
+        resourcefees.resourceThreeUnitsFee = resourceUnits
+        .resourceThreeUnitsFee;
+        resourcefees.resourceFourUnitsFee = resourceUnits.resourceFourUnitsFee;
+        resourcefees.resourceFiveUnitsFee = resourceUnits.resourceFiveUnitsFee;
+        resourcefees.resourceSixUnitsFee = resourceUnits.resourceSixUnitsFee;
+        resourcefees.resourceSevenUnitsFee = resourceUnits
+        .resourceSevenUnitsFee;
+        resourcefees.resourceEightUnitsFee = resourceUnits
+        .resourceEightUnitsFee;
     }
 
     /*
@@ -129,7 +133,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param ClusterDNS that is being settled
      * @dev Could only be invoked by the contract owner
      */
-    function withDrawFundsAdmin(address depositer, bytes32 clusterDns)
+    function withdrawFundsAdmin(address depositer, bytes32 clusterDns)
         public
         onlyOwner
     {
@@ -141,15 +145,12 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Depositer Address
      * @param ClusterDNS that is being settled
      */
-    uint256 public print3;
-    uint256 public print4;
 
     function settleAccounts(address depositer, bytes32 clusterDns) public {
         uint256 utilisedFunds;
-        uint256 currentTime = block.timestamp;
         Deposit storage deposit = deposits[depositer][clusterDns];
-        uint256 elapsedTime = currentTime - deposit.lastTxTime;
-        deposit.lastTxTime = currentTime;
+        uint256 elapsedTime = block.timestamp - deposit.lastTxTime;
+        deposit.lastTxTime = block.timestamp;
 
         (
             address clusterOwner,
@@ -176,27 +177,20 @@ contract BaseEscrow is Ownable, EscrowStorage {
                 utilisedFunds
             );
         }
-        print3 = elapsedTime;
 
         // Add fees to utilised funds.
-        (
-            uint256 fixAndVarDaoFee,
-            uint256 fixAndVarGovFee
-        ) = _AddFixedFeesAndDeduct(
+        uint256 fixAndVarDaoGovFee = _AddFixedFeesAndDeduct(
             utilisedFunds,
             elapsedTime,
-            deposit.cpuCoresUnits,
-            deposit.diskSpaceUnits,
-            deposit.bandwidthUnits,
-            deposit.memoryUnits
+            deposit
         );
 
-        utilisedFunds = utilisedFunds + fixAndVarDaoFee + fixAndVarGovFee;
-        print4 = utilisedFunds;
+        utilisedFunds = utilisedFunds + fixAndVarDaoGovFee;
+        if (deposit.notWithdrawable > 0) {
+            deposit.notWithdrawable = deposit.notWithdrawable - utilisedFunds;
+        }
         if (utilisedFunds >= deposit.totalDeposit) {
-            utilisedFunds =
-                deposit.totalDeposit -
-                (fixAndVarDaoFee + fixAndVarGovFee);
+            utilisedFunds = deposit.totalDeposit - fixAndVarDaoGovFee;
             delete deposits[depositer][clusterDns];
             removeClusterAddresConnection(
                 clusterDns,
@@ -204,7 +198,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
             );
         } else {
             deposit.totalDeposit = deposit.totalDeposit - utilisedFunds;
-            utilisedFunds = utilisedFunds - (fixAndVarDaoFee + fixAndVarGovFee);
+            utilisedFunds = utilisedFunds - fixAndVarDaoGovFee;
         }
 
         _withdraw(utilisedFunds, 0, depositer, clusterOwner, qualityFactor);
@@ -220,65 +214,25 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Memory Units Purchaised
      * @dev Part of the settelmet functions
      */
-    uint256 public printnr1 = 0;
-    uint256 public printnr2 = 0;
 
     function _AddFixedFeesAndDeduct(
         uint256 utilisedFunds,
         uint256 timeelapsed,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
-    ) internal returns (uint256, uint256) {
-        ResourceFees storage govFixedFees = fixedResourceFee["gov"];
-        ResourceFees storage daoFixedFees = fixedResourceFee["dao"];
-        uint256 daoFeesFixed;
-        uint256 govFeesFixed;
-        printnr2 = utilisedFunds;
-        if (cpuCoresUnits > 0) {
-            govFeesFixed =
-                govFeesFixed +
-                (cpuCoresUnits * govFixedFees.cpuFee * timeelapsed);
-            daoFeesFixed =
-                daoFeesFixed +
-                (cpuCoresUnits * daoFixedFees.cpuFee * timeelapsed);
-        }
-        if (diskSpaceUnits > 0) {
-            govFeesFixed =
-                govFeesFixed +
-                (cpuCoresUnits * govFixedFees.diskFee * timeelapsed);
-            daoFeesFixed =
-                daoFeesFixed +
-                (cpuCoresUnits * daoFixedFees.diskFee * timeelapsed);
-        }
-        if (bandwidthUnits > 0) {
-            govFeesFixed =
-                govFeesFixed +
-                (cpuCoresUnits * govFixedFees.bandwidthFee * timeelapsed);
-            daoFeesFixed =
-                daoFeesFixed +
-                (cpuCoresUnits * daoFixedFees.bandwidthFee * timeelapsed);
-        }
-        if (memoryUnits > 0) {
-            govFeesFixed =
-                govFeesFixed +
-                (cpuCoresUnits * govFixedFees.memoryFee * timeelapsed);
-            daoFeesFixed =
-                daoFeesFixed +
-                (cpuCoresUnits * daoFixedFees.memoryFee * timeelapsed);
-        }
+        Deposit memory resourceUnits
+    ) internal returns (uint256) {
+        uint256 daoFeesFixed = _getFixedFee(resourceUnits, timeelapsed, "dao");
+        uint256 govFeesFixed = _getFixedFee(resourceUnits, timeelapsed, "gov");
+
         (uint256 variableDaoFee, uint256 variableGovFee) = _AddVariablesFees(
             utilisedFunds
         );
-        uint256 daoFeesFixedAndVariable = daoFeesFixed + variableDaoFee;
-        uint256 govFeesFixedAndVariable = govFeesFixed + variableGovFee;
-        printnr1 = variableDaoFee;
+
         if (daoFeesFixed > 0)
-            IERC20(stackToken).transfer(dao, daoFeesFixedAndVariable);
+            IERC20(stackToken).transfer(dao, (daoFeesFixed + variableDaoFee));
         if (govFeesFixed > 0)
-            IERC20(stackToken).transfer(gov, govFeesFixedAndVariable);
-        return (daoFeesFixedAndVariable, govFeesFixedAndVariable);
+            IERC20(stackToken).transfer(gov, (govFeesFixed + variableGovFee));
+        return
+            (daoFeesFixed + variableDaoFee) + (govFeesFixed + variableGovFee);
     }
 
     /*
@@ -299,6 +253,72 @@ contract BaseEscrow is Ownable, EscrowStorage {
         return (forDao, forGov);
     }
 
+    function _getFixedFee(
+        Deposit memory resourceUnits,
+        uint256 timeelapsed,
+        string memory govOrDao
+    ) internal view returns (uint256) {
+        ResourceFees storage fixedFees = fixedResourceFee[govOrDao];
+        return
+            _calculateFixedFee(
+                resourceUnits.resourceOneUnits,
+                fixedFees.resourceOneUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceOneUnits,
+                fixedFees.resourceOneUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceTwoUnits,
+                fixedFees.resourceTwoUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceThreeUnits,
+                fixedFees.resourceThreeUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceFourUnits,
+                fixedFees.resourceFourUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceFiveUnits,
+                fixedFees.resourceFiveUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceSixUnits,
+                fixedFees.resourceSixUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceSevenUnits,
+                fixedFees.resourceSevenUnitsFee,
+                timeelapsed
+            ) +
+            _calculateFixedFee(
+                resourceUnits.resourceEightUnits,
+                fixedFees.resourceEightUnitsFee,
+                timeelapsed
+            );
+    }
+
+    function _calculateFixedFee(
+        uint256 resourceUnit,
+        uint256 FixedFeesForUnit,
+        uint256 timeElapsed
+    ) internal pure returns (uint256) {
+        if (resourceUnit > 0) {
+            return (resourceUnit * FixedFeesForUnit * timeElapsed);
+        } else {
+            return 0;
+        }
+    }
+
     /*
      * @title Deposit Stack to start using the cluster
      * @param Cluster DNS
@@ -313,12 +333,11 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
     function _createDepositInternal(
         bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits,
+        ResourceUnits memory resourceUnits,
         uint256 depositAmount,
-        address depositer
+        address depositer,
+        bool withdrawable,
+        bool grant
     ) internal {
         (, , , , , , , bool active) = IDnsClusterMetadataStore(dnsStore)
         .dnsToClusterMetadata(clusterDns);
@@ -327,59 +346,42 @@ contract BaseEscrow is Ownable, EscrowStorage {
         Deposit storage deposit = deposits[depositer][clusterDns];
 
         deposit.lastTxTime = block.timestamp;
-        deposit.cpuCoresUnits = cpuCoresUnits;
-        deposit.diskSpaceUnits = diskSpaceUnits;
-        deposit.bandwidthUnits = bandwidthUnits;
-        deposit.memoryUnits = memoryUnits;
+        deposit.resourceOneUnits = resourceUnits.resourceOneUnits; //CPU
+        deposit.resourceTwoUnits = resourceUnits.resourceTwoUnits; // diskSpaceUnits
+        deposit.resourceThreeUnits = resourceUnits.resourceThreeUnits; // bandwidthUnits
+        deposit.resourceFourUnits = resourceUnits.resourceFourUnits; // memoryUnits
+        deposit.resourceFiveUnits = resourceUnits.resourceFiveUnits;
+        deposit.resourceSixUnits = resourceUnits.resourceSixUnits;
+        deposit.resourceSevenUnits = resourceUnits.resourceSevenUnits;
+        deposit.resourceEightUnits = resourceUnits.resourceEightUnits;
 
-        deposit.totalDripRatePerSecond =
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "cpu",
-                deposit.cpuCoresUnits
-            ) +
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "memory",
-                deposit.memoryUnits
-            ) +
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "disk",
-                deposit.diskSpaceUnits
-            ) +
-            _calcResourceUnitsDripRateUSDT(
-                clusterDns,
-                "bandwidth",
-                deposit.bandwidthUnits
-            );
+        deposit.totalDripRatePerSecond = getResourcesDripRateInUSDT(
+            clusterDns,
+            resourceUnits
+        );
 
         addClusterAddresConnection(clusterDns, depositer);
-        _pullStackTokens(depositAmount);
-
+        if (grant == false) _pullStackTokens(depositAmount);
+        if (withdrawable == false) {
+            deposit.notWithdrawable = depositAmount;
+        }
         deposit.totalDeposit = deposit.totalDeposit + depositAmount;
-        // }
-
-        emit DEPOSIT(
-            clusterDns,
-            depositer,
-            deposit.totalDeposit,
-            deposit.lastTxTime,
-            deposit.totalDripRatePerSecond
-        );
     }
 
     function _rechargeAccountInternal(
         uint256 amount,
         address depositer,
-        bytes32 clusterDns
+        bytes32 clusterDns,
+        bool withdrawable,
+        bool grant
     ) internal {
-        (, , , , , , , bool active) = IDnsClusterMetadataStore(dnsStore)
-        .dnsToClusterMetadata(clusterDns);
-        require(active == true, "Deposits are disabled");
         Deposit storage deposit = deposits[depositer][clusterDns];
         deposit.totalDeposit = deposit.totalDeposit + amount;
-        _pullStackTokens(amount);
+        // If fund's given though grant, make them not withdrawable.
+        if (withdrawable == false) {
+            deposit.notWithdrawable = deposit.notWithdrawable + amount;
+        }
+        if (grant == false) _pullStackTokens(amount);
     }
 
     function _settleAndWithdraw(
@@ -391,6 +393,10 @@ contract BaseEscrow is Ownable, EscrowStorage {
         uint256 withdrawAmount;
         settleAccounts(depositer, clusterDns);
         Deposit storage deposit = deposits[depositer][clusterDns];
+        require(
+            deposit.totalDeposit.sub(deposit.notWithdrawable) > amount,
+            "Exeeds allowed"
+        );
         (
             address clusterOwner,
             ,
@@ -402,19 +408,21 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
         if (everything == false) {
-            require(
-                amount < deposit.totalDeposit,
-                "Insufficient deposit balance"
-            );
+            require(amount < deposit.totalDeposit, "Insufficient balance");
             deposit.totalDeposit = deposit.totalDeposit - amount;
             withdrawAmount = amount;
         } else {
-            withdrawAmount = deposit.totalDeposit;
-            delete deposits[depositer][clusterDns];
-            removeClusterAddresConnection(
-                clusterDns,
-                findAddressIndex(clusterDns, depositer)
-            );
+            withdrawAmount = deposit.totalDeposit.sub(deposit.notWithdrawable);
+
+            if (deposit.notWithdrawable == 0) {
+                delete deposits[depositer][clusterDns];
+                removeClusterAddresConnection(
+                    clusterDns,
+                    findAddressIndex(clusterDns, depositer)
+                );
+            } else {
+                deposit.totalDeposit = deposit.totalDeposit.sub(withdrawAmount);
+            }
         }
 
         _withdraw(0, withdrawAmount, depositer, clusterOwner, qualityFactor);
@@ -429,8 +437,9 @@ contract BaseEscrow is Ownable, EscrowStorage {
     function settleMultipleAccounts(bytes32 clusterDns, uint256 nrOfAccounts)
         public
     {
-        for (uint256 i; nrOfAccounts > i; i++) {
+        for (uint256 i; nrOfAccounts > i; ) {
             settleAccounts(clusterUsers[clusterDns][i], clusterDns);
+            i++;
         }
     }
 
@@ -623,8 +632,6 @@ contract BaseEscrow is Ownable, EscrowStorage {
         if (withdrawAmount > 0) {
             IERC20(stackToken).transfer(depositer, withdrawAmount);
         }
-
-        stackEarned = stackEarned + utilisedFunds;
     }
 
     function _swapTokens(
@@ -646,5 +653,67 @@ contract BaseEscrow is Ownable, EscrowStorage {
             forWallet,
             block.timestamp + 1200
         )[path.length - 1];
+    }
+
+    function defineResourceVar(uint16 resouceNr, string memory resourceName)
+        public
+        onlyOwner
+    {
+        resourceVar[resouceNr] = resourceName;
+    }
+
+    /*
+     * @title Fetches the cummulative dripRate of Resources
+     * @param Number of CPU's core units
+     * @param Number of Disk space units
+     * @param Number of Bandwidth units
+     * @param Number of Memory units
+     * @return Total resources drip rate measured in USDT
+     */
+    function getResourcesDripRateInUSDT(
+        bytes32 clusterDns,
+        ResourceUnits memory resourceUnits
+    ) public view returns (uint256) {
+        uint256 amountInUSDT = _calcResourceUnitsDripRateUSDT(
+            clusterDns,
+            resourceVar[1],
+            resourceUnits.resourceOneUnits
+        ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[2],
+                resourceUnits.resourceTwoUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[3],
+                resourceUnits.resourceThreeUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[4],
+                resourceUnits.resourceFourUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[5],
+                resourceUnits.resourceFiveUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[6],
+                resourceUnits.resourceSixUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[7],
+                resourceUnits.resourceSevenUnits
+            ) +
+            _calcResourceUnitsDripRateUSDT(
+                clusterDns,
+                resourceVar[8],
+                resourceUnits.resourceEightUnits
+            );
+        return amountInUSDT;
     }
 }
