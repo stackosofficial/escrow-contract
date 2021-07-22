@@ -39,10 +39,13 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Address of ResourceFeed deployed contract
      * @param Address of Staking deployed contract
      * @param Address of DnsClusterMetadataStore deployed contract
-     * @param Platform Fees
      * @param Factory Contract of DEX
      * @param Router Contract of DEX
+     * @param Dao address
+     * @param Gov address
      * @param WETH Contract Address
+     * @param USDT Contract Address
+     * @param Oracle Contract Address
      */
     constructor(
         address _stackToken,
@@ -87,10 +90,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     /*
      * @title Update the Platform fixed Fees. These fees are in USDT value.
      * @param Allocated for DAO or Governance
-     * @param CPU fee in USD.
-     * @param Disk fee in USD.
-     * @param Bandwith fee in USD.
-     * @param Memory fee in USD.
+     * @param ResourcesFees. A list of 8 item that includes fee per resource. Available resources and their order -> resourceVar(id) (1-8)
      * @dev Could only be invoked by the contract owner
      */
 
@@ -207,11 +207,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
     /*
      * @title Deduct Fixed and Variable Fees
      * @param Utilised funds in stack
-     * @param Time since the last deposit / settelment
-     * @param CPU Units Purchaised
-     * @param Disk Space Units Purchaised
-     * @param Bandwith Units Purchaised
-     * @param Memory Units Purchaised
+     * @param Time since the last deposit or settelment
+     * @param Resource Units.
      * @dev Part of the settelmet functions
      */
 
@@ -239,6 +236,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @title Part of AddFixedFeesAndDeduct
      * @param Utilised funds in stack
      * @dev Part of the settelmet functions
+     * @return Variable fees for dao and gov
      */
 
     function _AddVariablesFees(uint256 utilisedFunds)
