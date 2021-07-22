@@ -8,18 +8,25 @@ const IERC20 = artifacts.require("IERC20");
 const UniswapV2Router = artifacts.require("IUniswapV2Router02");
 
 const UniswapV2FactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
+//const PancakeFactoryAdderss
 const UniswapV2RouterAddress = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
+//const PancakeV2RouterAddress
 const stakingContractAddress = "0x7d2f88933e52C352549c748BB572F3c383528fF2";
+//const stakingContractAddressforBNB
 const StackTokenMainNet = "0x56A86d648c435DC707c8405B78e2Ae8eB4E60Ba4";
+//const StackAddressforBinance
 const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+//const WBNB
 const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+// const StableCoinforBNB
 const clusterDns =
   "0x74657374646e7300000000000000000000000000000000000000000000000000";
 const OracleFeed = artifacts.require("StackOracle");
 
 const lpstack = "0x635b58600509acFe70e0BD4c4935c08182774e58";
+//const lpstackforBNB
 const lpusdt = "0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852";
-
+//const lpstableforBNB
 contract("StackEscrow", (accounts) => {
   describe("Contract Deployment", async () => {
     it("ResourceFeed Contract Has been deployed", async () => {
