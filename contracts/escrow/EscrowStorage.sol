@@ -17,6 +17,7 @@ contract EscrowStorage {
     address internal weth;
     address internal usdt;
     address internal oracle;
+    uint256 internal minPurchase;
 
     struct ResourceFees {
         uint256 resourceOneUnitsFee; // cpuCoresUnits
@@ -37,14 +38,14 @@ contract EscrowStorage {
     }
 
     struct ResourceUnits {
-        uint256 resourceOneUnits; // cpuCoresUnits
-        uint256 resourceTwoUnits; // diskSpaceUnits
-        uint256 resourceThreeUnits; // bandwidthUnits
-        uint256 resourceFourUnits; // memoryUnits
-        uint256 resourceFiveUnits;
-        uint256 resourceSixUnits;
-        uint256 resourceSevenUnits;
-        uint256 resourceEightUnits;
+        uint256 resourceOne; // cpuCoresUnits
+        uint256 resourceTwo; // diskSpaceUnits
+        uint256 resourceThree; // bandwidthUnits
+        uint256 resourceFour; // memoryUnits
+        uint256 resourceFive;
+        uint256 resourceSix;
+        uint256 resourceSeven;
+        uint256 resourceEight;
     }
 
     struct Deposit {
@@ -63,8 +64,9 @@ contract EscrowStorage {
     }
 
     mapping(uint16 => string) public resourceVar;
+    mapping(bytes32 => ResourceUnits) public resourceCapacityState;
     mapping(string => ResourceFees) public fixedResourceFee;
-    mapping(address => WithdrawSetting) public withdrawSettings;
+    mapping(address => WithdrawSetting) internal withdrawSettings;
     mapping(address => mapping(bytes32 => Deposit)) public deposits;
     mapping(bytes32 => address[]) public clusterUsers;
 }

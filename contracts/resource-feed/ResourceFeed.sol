@@ -1,4 +1,5 @@
 pragma solidity ^0.6.2;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../cluster-metadata/IDnsClusterMetadataStore.sol";
@@ -19,6 +20,51 @@ contract ResourceFeed is Ownable {
     }
 
     mapping(bytes32 => mapping(string => Resource)) public resources;
+
+    struct ResourceUnits {
+        uint256 resourceOneUnits; // cpuCoresUnits
+        uint256 resourceTwoUnits; // diskSpaceUnits
+        uint256 resourceThreeUnits; // bandwidthUnits
+        uint256 resourceFourUnits; // memoryUnits
+        uint256 resourceFiveUnits;
+        uint256 resourceSixUnits;
+        uint256 resourceSevenUnits;
+        uint256 resourceEightUnits;
+    }
+
+    mapping(bytes32 => mapping(address => ResourceUnits))
+        public resourcesMaxPerDNSforAddress;
+
+    mapping(bytes32 => ResourceUnits) public resourcesMaxPerDNS;
+
+    function setResourceMaxCapacity(
+        bytes32 clusterDns,
+        ResourceUnits memory maxUnits
+    ) public {
+        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
+        .getClusterOwner(clusterDns);
+        require(clusterOwner == msg.sender, "Not the cluster owner!");
+        resourcesMaxPerDNS[clusterDns] = maxUnits;
+    }
+
+    function getResourceMaxCapacity(bytes32 clusterDns)
+        external
+        view
+        returns (ResourceUnits memory)
+    {
+        return resourcesMaxPerDNS[clusterDns];
+    }
+
+    function setResourceAddressMaxCapacity(
+        bytes32 clusterDns,
+        address wallet,
+        ResourceUnits memory maxUnits
+    ) public {
+        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
+        .getClusterOwner(clusterDns);
+        require(clusterOwner == msg.sender, "Not the cluster owner!");
+        resourcesMaxPerDNSforAddress[clusterDns][wallet] = maxUnits;
+    }
 
     /*
      * @dev - constructor (being called at contract deployment)
@@ -158,5 +204,51 @@ contract ResourceFeed is Ownable {
             "Resource not added."
         );
         return resource.votingWeightPerUnit;
+    }
+
+    /*
+     * @dev - converts string to bytes32
+     * @param string
+     * @return bytes32 - converted bytes
+     */
+    function stringToBytes32(string memory source)
+        public
+        pure
+        returns (bytes32 result)
+    {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 32))
+        }
+    }
+
+    /*
+     * @dev - converts bytes32 to string
+     * @param bytes32
+     * @return string - converted string
+     */
+    function bytes32ToString(bytes32 x)
+        public
+        pure
+        returns (string memory, uint256)
+    {
+        bytes memory bytesString = new bytes(32);
+        uint256 charCount = 0;
+        for (uint256 j = 0; j < 32; j++) {
+            bytes1 char = bytes1(bytes32(uint256(x) * 2**(8 * j)));
+            if (char != 0) {
+                bytesString[charCount] = char;
+                charCount++;
+            }
+        }
+        bytes memory bytesStringTrimmed = new bytes(charCount);
+        for (uint256 j = 0; j < charCount; j++) {
+            bytesStringTrimmed[j] = bytesString[j];
+        }
+        return (string(bytesStringTrimmed), charCount);
     }
 }

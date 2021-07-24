@@ -51,33 +51,6 @@ contract StackEscrow is BaseEscrow {
     }
 
     /*
-     * @title Purchase the resources using STACK token
-     * @param DNS Cluster
-     * @param Resources being boight. A list of 8 item. List of available resources and their order -> resourceVar(id) (1-8)
-     * @param Deposit Amount in stack token
-     * @dev User should only invoke the function when performing initial deposit
-     */
-    function updateResourcesByStackAmount(
-        bytes32 clusterDns,
-        ResourceUnits memory resourceUnits,
-        uint256 depositAmount
-    ) public {
-        Deposit storage deposit = deposits[msg.sender][clusterDns];
-        require(deposit.lastTxTime == 0, "Not the first deposit");
-        require(deposit.totalDeposit == 0, "Non zero amount already deposited");
-        require(depositAmount > 0, "zero deposit amount");
-
-        _createDepositInternal(
-            clusterDns,
-            resourceUnits,
-            depositAmount,
-            msg.sender,
-            true,
-            false
-        );
-    }
-
-    /*
      * @title Update the user's resources from STACK token
      * @param DNS Cluster
      * @param Resources being boight. A list of 8 item. List of available resources and their order -> resourceVar(id) (1-8)
@@ -92,6 +65,9 @@ contract StackEscrow is BaseEscrow {
             Deposit storage deposit = deposits[msg.sender][clusterDns];
             if (deposit.lastTxTime > 0) {
                 settleAccounts(msg.sender, clusterDns);
+                reduceClusterCap(clusterDns, msg.sender);
+            } else {
+                require(minPurchase >= 0);
             }
         }
 
@@ -121,7 +97,7 @@ contract StackEscrow is BaseEscrow {
     ) public {
         address clusterOwner = IDnsClusterMetadataStore(dnsStore)
         .getClusterOwner(clusterDns);
-        require(clusterOwner == msg.sender, "Not the cluster owner!");
+        require(clusterOwner == msg.sender);
         _rechargeAccountInternal(
             amount,
             account,
@@ -172,7 +148,7 @@ contract StackEscrow is BaseEscrow {
      */
 
     function setWithdrawTokenPortion(address token, uint256 percent) public {
-        require(percent <= 10000, "Has to be below 10000");
+        require(percent <= 10000);
         WithdrawSetting storage withdrawsetup = withdrawSettings[msg.sender];
         withdrawsetup.token = token;
         withdrawsetup.percent = percent;
@@ -210,7 +186,7 @@ contract StackEscrow is BaseEscrow {
         bytes32 clusterDns,
         ResourceUnits memory resourceUnits
     ) public onlyOwner {
-        require(amount <= communityDeposits, "Over deposit limit");
+        require(amount <= communityDeposits);
         Deposit storage deposit = deposits[developer][clusterDns];
         require(deposit.lastTxTime == 0);
         require(deposit.totalDeposit == 0);
@@ -238,7 +214,7 @@ contract StackEscrow is BaseEscrow {
         uint256 amount,
         bytes32 clusterDns
     ) public onlyOwner {
-        require(amount <= communityDeposits, "Over available");
+        require(amount <= communityDeposits);
         communityDeposits = communityDeposits - amount;
         _rechargeAccountInternal(amount, developer, clusterDns, false, true);
     }

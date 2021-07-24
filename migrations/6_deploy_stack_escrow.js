@@ -5,7 +5,8 @@ const Staking = artifacts.require("Staking");
 const DnsClusterMetadataStore = artifacts.require("DnsClusterMetadataStore");
 const OracleFeed = artifacts.require("StackOracle");
 
-const _stackosControllerAdress = "0x77c940F10a7765B49273418aDF5750979718e85f";
+const dao = "0x77c940F10a7765B49273418aDF5750979718e85f";
+const gov = "0x77c940F10a7765B49273418aDF5750979718e85f";
 const UniswapV2FactoryAddress = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
 const UniswapV2RouterAddress = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
 const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -29,8 +30,8 @@ module.exports = function (deployer) {
       dnsClusterMetadataStore.address,
       UniswapV2FactoryAddress,
       UniswapV2RouterAddress,
-      _stackosControllerAdress,
-      _stackosControllerAdress,
+      dao,
+      gov,
       WETH,
       USDT,
       oracle.address

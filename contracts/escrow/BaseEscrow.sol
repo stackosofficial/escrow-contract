@@ -128,6 +128,16 @@ contract BaseEscrow is Ownable, EscrowStorage {
     }
 
     /*
+     * @title Update the Platform Minimum
+     * @param Minimum resource purchaise amount.
+     * @dev Could only be invoked by the contract owner
+     */
+
+    function setMinPurchase(uint256 minStackAmount) public onlyOwner {
+        minPurchase = minStackAmount;
+    }
+
+    /*
      * @title Withdraw a depositer funds
      * @param Depositer Address
      * @param ClusterDNS that is being settled
@@ -191,6 +201,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         }
         if (utilisedFunds >= deposit.totalDeposit) {
             utilisedFunds = deposit.totalDeposit - fixAndVarDaoGovFee;
+            reduceClusterCap(clusterDns, depositer);
             delete deposits[depositer][clusterDns];
             removeClusterAddresConnection(
                 clusterDns,
@@ -202,6 +213,49 @@ contract BaseEscrow is Ownable, EscrowStorage {
         }
 
         _withdraw(utilisedFunds, 0, depositer, clusterOwner, qualityFactor);
+    }
+
+    function reduceClusterCap(bytes32 clusterDns, address depositer) internal {
+        if (resourceCapacityState[clusterDns].resourceOne > 0)
+            resourceCapacityState[clusterDns]
+            .resourceOne = resourceCapacityState[clusterDns].resourceOne.sub(
+                deposits[depositer][clusterDns].resourceOneUnits
+            );
+        if (resourceCapacityState[clusterDns].resourceTwo > 0)
+            resourceCapacityState[clusterDns]
+            .resourceTwo = resourceCapacityState[clusterDns].resourceTwo.sub(
+                deposits[depositer][clusterDns].resourceTwoUnits
+            );
+        if (resourceCapacityState[clusterDns].resourceThree > 0)
+            resourceCapacityState[clusterDns]
+            .resourceThree = resourceCapacityState[clusterDns]
+            .resourceThree
+            .sub(deposits[depositer][clusterDns].resourceThreeUnits);
+        if (resourceCapacityState[clusterDns].resourceFour > 0)
+            resourceCapacityState[clusterDns]
+            .resourceFour = resourceCapacityState[clusterDns].resourceFour.sub(
+                deposits[depositer][clusterDns].resourceFourUnits
+            );
+        if (resourceCapacityState[clusterDns].resourceFive > 0)
+            resourceCapacityState[clusterDns]
+            .resourceFive = resourceCapacityState[clusterDns].resourceFive.sub(
+                deposits[depositer][clusterDns].resourceFiveUnits
+            );
+        if (resourceCapacityState[clusterDns].resourceSix > 0)
+            resourceCapacityState[clusterDns]
+            .resourceSix = resourceCapacityState[clusterDns].resourceSix.sub(
+                deposits[depositer][clusterDns].resourceSixUnits
+            );
+        if (resourceCapacityState[clusterDns].resourceSeven > 0)
+            resourceCapacityState[clusterDns]
+            .resourceSeven = resourceCapacityState[clusterDns]
+            .resourceSeven
+            .sub(deposits[depositer][clusterDns].resourceSevenUnits);
+        if (resourceCapacityState[clusterDns].resourceEight > 0)
+            resourceCapacityState[clusterDns]
+            .resourceEight = resourceCapacityState[clusterDns]
+            .resourceEight
+            .sub(deposits[depositer][clusterDns].resourceEightUnits);
     }
 
     /*
@@ -320,12 +374,11 @@ contract BaseEscrow is Ownable, EscrowStorage {
     /*
      * @title Deposit Stack to start using the cluster
      * @param Cluster DNS
-     * @param Amount of CPU Units that will be used
-     * @param Amount of Disk Space that will be used
-     * @param Amount of Bandwith that will be used
-     * @param Amount of Memory that will be used
+     * @param ResourcesFees. A list of 8 item that includes fee per resource. Available resources and their order -> resourceVar(id) (1-8)
      * @param Amount of Stack to Deposit to use these recources.
      * @param The address of resource buyer.
+     * @param is it withdrawable
+     * @param Is it a grant
      * @dev Part of the settelmet functions
      */
 
@@ -339,19 +392,21 @@ contract BaseEscrow is Ownable, EscrowStorage {
     ) internal {
         (, , , , , , , bool active) = IDnsClusterMetadataStore(dnsStore)
         .dnsToClusterMetadata(clusterDns);
-        require(active == true, "Deposits are disabled");
+        require(active == true);
 
         Deposit storage deposit = deposits[depositer][clusterDns];
 
+        _capacityCheck(clusterDns, resourceUnits);
+
         deposit.lastTxTime = block.timestamp;
-        deposit.resourceOneUnits = resourceUnits.resourceOneUnits; //CPU
-        deposit.resourceTwoUnits = resourceUnits.resourceTwoUnits; // diskSpaceUnits
-        deposit.resourceThreeUnits = resourceUnits.resourceThreeUnits; // bandwidthUnits
-        deposit.resourceFourUnits = resourceUnits.resourceFourUnits; // memoryUnits
-        deposit.resourceFiveUnits = resourceUnits.resourceFiveUnits;
-        deposit.resourceSixUnits = resourceUnits.resourceSixUnits;
-        deposit.resourceSevenUnits = resourceUnits.resourceSevenUnits;
-        deposit.resourceEightUnits = resourceUnits.resourceEightUnits;
+        deposit.resourceOneUnits = resourceUnits.resourceOne; //CPU
+        deposit.resourceTwoUnits = resourceUnits.resourceTwo; // diskSpaceUnits
+        deposit.resourceThreeUnits = resourceUnits.resourceThree; // bandwidthUnits
+        deposit.resourceFourUnits = resourceUnits.resourceFour; // memoryUnits
+        deposit.resourceFiveUnits = resourceUnits.resourceFive;
+        deposit.resourceSixUnits = resourceUnits.resourceSix;
+        deposit.resourceSevenUnits = resourceUnits.resourceSeven;
+        deposit.resourceEightUnits = resourceUnits.resourceEight;
 
         deposit.totalDripRatePerSecond = getResourcesDripRateInUSDT(
             clusterDns,
@@ -364,6 +419,95 @@ contract BaseEscrow is Ownable, EscrowStorage {
             deposit.notWithdrawable = depositAmount;
         }
         deposit.totalDeposit = deposit.totalDeposit + depositAmount;
+    }
+
+    function _capacityCheck(
+        bytes32 clusterDns,
+        ResourceUnits memory resourceUnits
+    ) internal {
+        resourceCapacityState[clusterDns].resourceOne =
+            resourceCapacityState[clusterDns].resourceOne +
+            resourceUnits.resourceOne;
+        resourceCapacityState[clusterDns].resourceTwo =
+            resourceCapacityState[clusterDns].resourceTwo +
+            resourceUnits.resourceTwo;
+        resourceCapacityState[clusterDns].resourceThree =
+            resourceCapacityState[clusterDns].resourceThree +
+            resourceUnits.resourceThree;
+        resourceCapacityState[clusterDns].resourceFour =
+            resourceCapacityState[clusterDns].resourceFour +
+            resourceUnits.resourceFour;
+        resourceCapacityState[clusterDns].resourceFive =
+            resourceCapacityState[clusterDns].resourceFive +
+            resourceUnits.resourceFive;
+        resourceCapacityState[clusterDns].resourceSix =
+            resourceCapacityState[clusterDns].resourceSix +
+            resourceUnits.resourceSix;
+        resourceCapacityState[clusterDns].resourceSeven =
+            resourceCapacityState[clusterDns].resourceSeven +
+            resourceUnits.resourceSeven;
+        resourceCapacityState[clusterDns].resourceEight =
+            resourceCapacityState[clusterDns].resourceEight +
+            resourceUnits.resourceEight;
+
+        bool OverLimit = false;
+        if (
+            resourceUnits.resourceOne > 1 &&
+            resourceUnits.resourceOne >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceOneUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceTwo > 1 &&
+            resourceUnits.resourceTwo >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceTwoUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceThree > 1 &&
+            resourceUnits.resourceThree >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceThreeUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceFour > 1 &&
+            resourceUnits.resourceFour >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceFourUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceFive > 1 &&
+            resourceUnits.resourceFive >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceFiveUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceSix > 1 &&
+            resourceUnits.resourceSix >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceSixUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceSeven > 1 &&
+            resourceUnits.resourceSeven >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceSevenUnits
+        ) OverLimit = true;
+        if (
+            resourceUnits.resourceEight > 1 &&
+            resourceUnits.resourceEight >
+            IResourceFeed(resourceFeed)
+            .getResourceMaxCapacity(clusterDns)
+            .resourceEightUnits
+        ) OverLimit = true;
+        require(OverLimit == false);
     }
 
     function _rechargeAccountInternal(
@@ -391,10 +535,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         uint256 withdrawAmount;
         settleAccounts(depositer, clusterDns);
         Deposit storage deposit = deposits[depositer][clusterDns];
-        require(
-            deposit.totalDeposit.sub(deposit.notWithdrawable) > amount,
-            "Exeeds allowed"
-        );
+        require(deposit.totalDeposit.sub(deposit.notWithdrawable) > amount);
         (
             address clusterOwner,
             ,
@@ -406,7 +547,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
         if (everything == false) {
-            require(amount < deposit.totalDeposit, "Insufficient balance");
+            require(amount < deposit.totalDeposit);
             deposit.totalDeposit = deposit.totalDeposit - amount;
             withdrawAmount = amount;
         } else {
@@ -435,9 +576,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
     function settleMultipleAccounts(bytes32 clusterDns, uint256 nrOfAccounts)
         public
     {
-        for (uint256 i; nrOfAccounts > i; ) {
-            settleAccounts(clusterUsers[clusterDns][i], clusterDns);
-            i++;
+        for (uint256 i = nrOfAccounts; i > 0; i--) {
+            settleAccounts(clusterUsers[clusterDns][i - 1], clusterDns);
         }
     }
 
@@ -495,16 +635,6 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Deployer wallet address
      * @dev Part of deposit function
      */
-
-    function _calcResourceUnitsPriceUSDT(
-        bytes32 clusterDns,
-        string memory resourceName,
-        uint256 resourceUnits
-    ) internal view returns (uint256) {
-        uint256 pricePerUnitUSDT = IResourceFeed(resourceFeed)
-        .getResourcePriceUSDT(clusterDns, resourceName);
-        return pricePerUnitUSDT * resourceUnits;
-    }
 
     function _calcResourceUnitsDripRateUSDT(
         bytes32 clusterDns,
@@ -569,7 +699,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         STACKVALUE = _getQuote(ETHVALUE, weth, stackToken);
     }
 
-    function stackToToken(address _token, uint256 _stackAmount)
+    function stackToTokenRate(address _token, uint256 _stackAmount)
         public
         view
         returns (uint256 TOKENVALUE)
@@ -610,7 +740,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
                     stackToken,
                     withdrawsetup.token,
                     stacktoToken,
-                    0,
+                    stackToTokenRate(withdrawsetup.token, stacktoToken),
                     clusterOwner
                 );
                 IERC20(stackToken).transfer(clusterOwner, stackWithdraw);
@@ -653,6 +783,12 @@ contract BaseEscrow is Ownable, EscrowStorage {
         )[path.length - 1];
     }
 
+    /*
+     * @title Define Recource Strings
+     * @param Resource ID from 1 to 8
+     * @param Name of the resource.
+     */
+
     function defineResourceVar(uint16 resouceNr, string memory resourceName)
         public
         onlyOwner
@@ -662,10 +798,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
 
     /*
      * @title Fetches the cummulative dripRate of Resources
-     * @param Number of CPU's core units
-     * @param Number of Disk space units
-     * @param Number of Bandwidth units
-     * @param Number of Memory units
+     * @param ResourcesFees. A list of 8 item that includes fee per resource. Available resources and their order -> resourceVar(id) (1-8)
      * @return Total resources drip rate measured in USDT
      */
     function getResourcesDripRateInUSDT(
@@ -675,42 +808,42 @@ contract BaseEscrow is Ownable, EscrowStorage {
         uint256 amountInUSDT = _calcResourceUnitsDripRateUSDT(
             clusterDns,
             resourceVar[1],
-            resourceUnits.resourceOneUnits
+            resourceUnits.resourceOne
         ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[2],
-                resourceUnits.resourceTwoUnits
+                resourceUnits.resourceTwo
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[3],
-                resourceUnits.resourceThreeUnits
+                resourceUnits.resourceThree
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[4],
-                resourceUnits.resourceFourUnits
+                resourceUnits.resourceFour
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[5],
-                resourceUnits.resourceFiveUnits
+                resourceUnits.resourceFive
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[6],
-                resourceUnits.resourceSixUnits
+                resourceUnits.resourceSix
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[7],
-                resourceUnits.resourceSevenUnits
+                resourceUnits.resourceSeven
             ) +
             _calcResourceUnitsDripRateUSDT(
                 clusterDns,
                 resourceVar[8],
-                resourceUnits.resourceEightUnits
+                resourceUnits.resourceEight
             );
         return amountInUSDT;
     }
