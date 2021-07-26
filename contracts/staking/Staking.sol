@@ -78,7 +78,7 @@ contract Staking is Ownable {
      * @param Updated dao address
      * @dev Could only be invoked by the contract owner
      */
-    function setDaoAddress(uint256 _daoAddress) public onlyOwner {
+    function setDaoAddress(address _daoAddress) public onlyOwner {
         daoAddress = _daoAddress;
     }
 
@@ -167,7 +167,7 @@ contract Staking is Ownable {
 
     function withdraw(uint256 _amount) public returns (bool) {
         if (lockTime[msg.sender] == 0) {
-            lockTime[msg.sender] = block.number.add(lockAmountForBlocks);
+            lockTime[msg.sender] = block.number + lockAmountForBlocks;
         } else {
             require(
                 block.number >= lockTime[msg.sender],
