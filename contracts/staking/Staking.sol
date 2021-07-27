@@ -125,7 +125,9 @@ contract Staking is Ownable {
         uint256 _amount,
         bytes32 _dns,
         string memory _ipAddress,
-        string memory _whitelistedIps
+        string memory _whitelistedIps,
+        string memory _clusterType,
+        bool _isPrivate
     ) public returns (bool) {
         require(
             _amount > stakingAmount,
@@ -143,7 +145,9 @@ contract Staking is Ownable {
             _dns,
             address(msg.sender),
             _ipAddress,
-            _whitelistedIps
+            _whitelistedIps,
+            _clusterType,
+            _isPrivate
         );
         return true;
     }
@@ -183,6 +187,8 @@ contract Staking is Ownable {
                 uint256 upvotes,
                 uint256 downvotes,
                 bool isDefaulter,
+                ,
+                ,
                 ,
 
             ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
@@ -230,6 +236,8 @@ contract Staking is Ownable {
             uint256 upvotes,
             ,
             bool isDefaulter,
+            ,
+            ,
             ,
 
         ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(

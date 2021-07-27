@@ -145,7 +145,9 @@ contract("StackEscrow", (accounts) => {
         clusterDns,
         clusterProviderWallet,
         "120.231.231.21",
-        "120.231.231.21"
+        "120.231.231.21",
+        "High",
+        true
       );
       await dnsCluster.dnsToClusterMetadata(clusterDns).then(function (c) {
         var clusterOwner = c["clusterOwner"];

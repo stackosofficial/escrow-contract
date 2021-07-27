@@ -20,6 +20,8 @@ contract DnsClusterMetadataStore is Ownable {
         bool isDefaulter;
         uint256 qualityFactor;
         bool active;
+        string clusterType;
+        bool isPrivate;
     }
 
     mapping(bytes32 => mapping(address => uint256)) public clusterUpvotes;
@@ -65,13 +67,17 @@ contract DnsClusterMetadataStore is Ownable {
      * @param cluster owner address
      * @param IPAddress of dns
      * @param whitelisted IP
+     * @param cluster type
+     * @param isPrivate
      * @dev Could only be invoked by the staking contract
      */
     function addDnsToClusterEntry(
         bytes32 _dns,
         address _clusterOwner,
         string memory _ipAddress,
-        string memory _whitelistedIps
+        string memory _whitelistedIps,
+        string memory _clusterType,
+        bool _isPrivate
     ) public onlyStakingContract {
         ClusterMetadata memory metadata = ClusterMetadata(
             _clusterOwner,
@@ -81,7 +87,9 @@ contract DnsClusterMetadataStore is Ownable {
             0,
             false,
             100,
-            true
+            true,
+            _clusterType,
+            _isPrivate
         );
 
         dnsToClusterMetadata[_dns] = metadata;
