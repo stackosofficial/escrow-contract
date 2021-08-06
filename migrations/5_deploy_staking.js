@@ -5,7 +5,7 @@ const _stakingAmount = '100000000000000000000';
 const _slashFactor = '500000000000000000';
 const _rewardsPerUpvote = '100000000000000000';
 const _rewardsPerShare = '100000000000000000';
-const _daoAddress = '0x7d2f88933e52C352549c748BB572F3c383528fF2';
+const _daoAddress = '0xC6cDFD798dDa2Cc4Ca2601975366dc1ddF0Bc7E6';
 const _stackTokenAddress = '0x6855f7bb6287F94ddcC8915E37e73a3c9fEe5CF3';
 
 module.exports = function (deployer) {
