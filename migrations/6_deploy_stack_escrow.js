@@ -8,12 +8,24 @@ const EscrowLib = artifacts.require('EscrowLib');
 
 const dao = '0xC6cDFD798dDa2Cc4Ca2601975366dc1ddF0Bc7E6';
 const gov = '0xC6cDFD798dDa2Cc4Ca2601975366dc1ddF0Bc7E6';
-const UniswapV2FactoryAddress = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-const UniswapV2RouterAddress = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
-const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+
+// ETHEREUM
+// const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+// const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+// const lpstack = '0x17e9216402138B15B30bd341c0377054e42aEbf8';
+// const lpusdt = '0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852';
+// const UniswapV2FactoryAddress = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
+// const UniswapV2RouterAddress = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
+
+// BSC
+const WETH = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const USDT = '0x55d398326f99059fF775485246999027B3197955';
 const lpstack = '0x17e9216402138B15B30bd341c0377054e42aEbf8';
-const lpusdt = '0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852';
+const lpusdt = '0x16b9a82891338f9bA80E2D6970FddA79D1eb0daE';
+const UniswapV2FactoryAddress = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
+const UniswapV2RouterAddress = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+
+// Addresses
 const _stackTokenAddress = '0x6855f7bb6287F94ddcC8915E37e73a3c9fEe5CF3';
 const _resourceFeedAddress = '0x91EA7827647475D0228957d396c5795023d6d4CA';
 const _dnsClusterMetadataStoreAddress =
