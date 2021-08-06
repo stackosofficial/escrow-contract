@@ -1,17 +1,11 @@
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+import "../escrow/EscrowLib.sol";
 
 interface IEscrow {
-    function deposits(address depositer)
+    function getDeposits(address depositer, bytes32 clusterDns)
         external
-        returns (
-            bytes32,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            bool,
-            uint256
-        );
+        returns (EscrowLib.Deposit memory);
+
+    function getResouceVar(uint16 _id) external returns (string memory);
 }

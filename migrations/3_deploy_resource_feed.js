@@ -7,8 +7,7 @@ module.exports = function (deployer) {
     const stackToken = await StackToken.deployed();
     const resourceFeed = await deployer.deploy(
       ResourceFeed,
-      stackToken.address,
-      usdtAddress
+      stackToken.address
     );
   });
 };

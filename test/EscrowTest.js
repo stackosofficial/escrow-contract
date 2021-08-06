@@ -30,7 +30,7 @@ contract("StackEscrow", (accounts) => {
 
   describe("Contract Deployment", async () => {
     it("ResourceFeed Contract Has been deployed", async () => {
-      resourceFeed = await ResourceFeed.new(StackTokenMainNet, WETH);
+      resourceFeed = await ResourceFeed.new(StackTokenMainNet);
       assert.equal((await resourceFeed.address) !== "", true);
       stackToken = await IERC20.at(StackTokenMainNet);
       usdtToken = await IERC20.at(USDT);
@@ -43,7 +43,7 @@ contract("StackEscrow", (accounts) => {
     });
 
     it("Oracle Contract Has been deployed", async () => {
-      oracleFeed = await OracleFeed.new(lpstack, lpusdt);
+      oracleFeed = await OracleFeed.new(lpstack, lpusdt, WETH);
     });
 
     it("StackEscrow Contract Has been deployed", async () => {
@@ -151,6 +151,20 @@ contract("StackEscrow", (accounts) => {
         var clusterOwner = c["clusterOwner"];
         assert.equal(clusterOwner == clusterProviderWallet, true);
       });
+    });
+
+    it("try addDnsToClusterEntry() using the same DNS and fail", async () => {
+      try {
+        await dnsCluster.addDnsToClusterEntry(
+          clusterDns,
+          clusterProviderWallet,
+          "120.231.231.21",
+          "120.231.231.21"
+        );
+        assert.fail("This transaction should have thrown an error.");
+      } catch (err) {
+        assert.include(err.message, "revert");
+      }
     });
 
     // $
@@ -275,14 +289,14 @@ contract("StackEscrow", (accounts) => {
     it("updateResourcesByStackAmount()", async () => {
       await stackEscrow.updateResourcesFromStack(
         clusterDns,
-        [1, 1, 1, 1, 1, 1, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0],
         "615000000000000000000",
         {
           from: developerWallet,
         }
       );
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           assert.equal(amount == "615000000000000000000", true);
@@ -308,7 +322,7 @@ contract("StackEscrow", (accounts) => {
       );
 
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var totalDeposit = c["totalDeposit"];
           var totalDripRatePerSecond = c["totalDripRatePerSecond"];
@@ -345,7 +359,7 @@ contract("StackEscrow", (accounts) => {
         }
       );
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           assert.equal(amount == "615000000000000000000", true);
@@ -359,7 +373,7 @@ contract("StackEscrow", (accounts) => {
 
     it("rebateAccount()", async () => {
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           beforeRebateAmount = c["totalDeposit"].toString();
         });
@@ -381,7 +395,7 @@ contract("StackEscrow", (accounts) => {
       );
 
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           const afterRebateAmount = c["totalDeposit"].toString();
           assert.equal(afterRebateAmount > beforeRebateAmount, true);
@@ -395,7 +409,7 @@ contract("StackEscrow", (accounts) => {
       );
       await stackEscrow.withdrawFunds(clusterDns, { from: developerWallet });
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();
@@ -422,7 +436,7 @@ contract("StackEscrow", (accounts) => {
         }
       );
       await stackEscrow
-        .deposits(developerWallet2, clusterDns)
+        .getDeposits(developerWallet2, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           assert.equal(amount == "615000000000000000000", true);
@@ -449,7 +463,7 @@ contract("StackEscrow", (accounts) => {
         }
       );
       await stackEscrow
-        .deposits(developerWallet3, clusterDns)
+        .getDeposits(developerWallet3, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           assert.equal(amount == "600000000000000000000", true);
@@ -477,7 +491,7 @@ contract("StackEscrow", (accounts) => {
       });
 
       await stackEscrow
-        .deposits(developerWallet3, clusterDns)
+        .getDeposits(developerWallet3, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           assert.equal(amount > "599000000000000000000", true);
@@ -509,7 +523,7 @@ contract("StackEscrow", (accounts) => {
 
     it("rechargeAccount and succeed", async () => {
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var totalDeposit = c["totalDeposit"];
           console.log(totalDeposit.toString());
@@ -519,7 +533,7 @@ contract("StackEscrow", (accounts) => {
         from: developerWallet,
       });
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var totalDeposit = c["totalDeposit"];
           console.log(totalDeposit.toString());
@@ -551,7 +565,7 @@ contract("StackEscrow", (accounts) => {
         [1, 1, 1, 1, 0, 0, 0, 0]
       );
       await stackEscrow
-        .deposits(developerWallet2, clusterDns)
+        .getDeposits(developerWallet2, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();
@@ -572,7 +586,7 @@ contract("StackEscrow", (accounts) => {
       });
 
       await stackEscrow
-        .deposits(developerWallet2, clusterDns)
+        .getDeposits(developerWallet2, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();
@@ -586,7 +600,7 @@ contract("StackEscrow", (accounts) => {
       await timeMachine.advanceTimeAndBlock(60 * 60 * 99);
       await stackEscrow.settleMultipleAccounts(clusterDns, 3);
       await stackEscrow
-        .deposits(developerWallet2, clusterDns)
+        .getDeposits(developerWallet2, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();
@@ -595,7 +609,7 @@ contract("StackEscrow", (accounts) => {
         });
 
       await stackEscrow
-        .deposits(developerWallet, clusterDns)
+        .getDeposits(developerWallet, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();
@@ -603,7 +617,7 @@ contract("StackEscrow", (accounts) => {
           assert.equal(notWithdrawable == "0", true);
         });
       await stackEscrow
-        .deposits(developerWallet3, clusterDns)
+        .getDeposits(developerWallet3, clusterDns)
         .then(function (c) {
           var amount = c["totalDeposit"].toString();
           var notWithdrawable = c["notWithdrawable"].toString();

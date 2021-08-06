@@ -4,6 +4,7 @@ const ResourceFeed = artifacts.require("ResourceFeed");
 const Staking = artifacts.require("Staking");
 const DnsClusterMetadataStore = artifacts.require("DnsClusterMetadataStore");
 const OracleFeed = artifacts.require("StackOracle");
+const EscrowLib = artifacts.require("EscrowLib");
 
 const dao = "0x77c940F10a7765B49273418aDF5750979718e85f";
 const gov = "0x77c940F10a7765B49273418aDF5750979718e85f";
@@ -21,7 +22,11 @@ module.exports = function (deployer) {
     const staking = await Staking.deployed();
     const dnsClusterMetadataStore = await DnsClusterMetadataStore.deployed();
 
-    const oracle = await deployer.deploy(OracleFeed, lpstack, lpusdt);
+    const oracle = await deployer.deploy(OracleFeed, lpstack, lpusdt, WETH);
+
+    await deployer.deploy(EscrowLib);
+    await deployer.link(EscrowLib, StackEscrow);
+
     const stackEscrow = await deployer.deploy(
       StackEscrow,
       stackToken.address,
@@ -36,5 +41,19 @@ module.exports = function (deployer) {
       USDT,
       oracle.address
     );
+
+    await stackEscrow.defineResourceVar(1, "cpuMillicore");
+    await stackEscrow.defineResourceVar(2, "diskSpaceGB");
+    await stackEscrow.defineResourceVar(3, "requestPerSecond");
+    await stackEscrow.defineResourceVar(4, "memoryMB");
+    await stackEscrow.defineResourceVar(5, "undefined");
+    await stackEscrow.defineResourceVar(6, "undefined");
+    await stackEscrow.defineResourceVar(7, "undefined");
+    await stackEscrow.defineResourceVar(8, "undefined");
+
+    await stackEscrow.setFixedFees("dao", [10, 10, 10, 10, 10, 10, 10, 10]);
+    await stackEscrow.setFixedFees("gov", [10, 10, 10, 10, 0, 0, 0, 0]);
+
+    await stackEscrow.setVariableFees("100", "100");
   });
 };

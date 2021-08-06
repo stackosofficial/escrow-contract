@@ -13,11 +13,6 @@ interface IResourceFeed {
         uint256 resourceEightUnits;
     }
 
-    function getResourcePriceUSDT(bytes32 clusterDns, string calldata name)
-        external
-        view
-        returns (uint256);
-
     function getResourceDripRateUSDT(bytes32 clusterDns, string calldata name)
         external
         view
@@ -27,8 +22,6 @@ interface IResourceFeed {
         external
         view
         returns (uint256);
-
-    function USDToken() external view returns (address);
 
     function getResourceMaxCapacity(bytes32 clusterDns)
         external

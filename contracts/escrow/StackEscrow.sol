@@ -1,6 +1,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 import "./BaseEscrow.sol";
+import "./EscrowLib.sol";
 
 // /// @title StackEscrow is derived from the BaseEscrow Contract
 // /// @notice Major contract responsible for user to purchase or update StackOS's resources from Stack Token
@@ -58,11 +59,13 @@ contract StackEscrow is BaseEscrow {
      */
     function updateResourcesFromStack(
         bytes32 clusterDns,
-        ResourceUnits memory resourceUnits,
+        EscrowLib.ResourceUnits memory resourceUnits,
         uint256 depositAmount
     ) public {
         {
-            Deposit storage deposit = deposits[msg.sender][clusterDns];
+            EscrowLib.Deposit storage deposit = deposits[msg.sender][
+                clusterDns
+            ];
             if (deposit.lastTxTime > 0) {
                 settleAccounts(msg.sender, clusterDns);
                 reduceClusterCap(clusterDns, msg.sender);
@@ -96,7 +99,7 @@ contract StackEscrow is BaseEscrow {
         bool withdrawable
     ) public {
         address clusterOwner = IDnsClusterMetadataStore(dnsStore)
-        .getClusterOwner(clusterDns);
+            .getClusterOwner(clusterDns);
         require(clusterOwner == msg.sender);
         _rechargeAccountInternal(
             amount,
@@ -115,7 +118,7 @@ contract StackEscrow is BaseEscrow {
      */
     function getResourcesDripRateInSTACK(
         bytes32 clusterDns,
-        ResourceUnits memory resourceUnits
+        EscrowLib.ResourceUnits memory resourceUnits
     ) public view returns (uint256) {
         uint256 amountInUSDT = getResourcesDripRateInUSDT(
             clusterDns,
@@ -149,7 +152,9 @@ contract StackEscrow is BaseEscrow {
 
     function setWithdrawTokenPortion(address token, uint256 percent) public {
         require(percent <= 10000);
-        WithdrawSetting storage withdrawsetup = withdrawSettings[msg.sender];
+        EscrowLib.WithdrawSetting storage withdrawsetup = withdrawSettings[
+            msg.sender
+        ];
         withdrawsetup.token = token;
         withdrawsetup.percent = percent;
     }
@@ -184,10 +189,10 @@ contract StackEscrow is BaseEscrow {
         address developer,
         uint256 amount,
         bytes32 clusterDns,
-        ResourceUnits memory resourceUnits
+        EscrowLib.ResourceUnits memory resourceUnits
     ) public onlyOwner {
         require(amount <= communityDeposits);
-        Deposit storage deposit = deposits[developer][clusterDns];
+        EscrowLib.Deposit storage deposit = deposits[developer][clusterDns];
         require(deposit.lastTxTime == 0);
         require(deposit.totalDeposit == 0);
         require(amount > 0);

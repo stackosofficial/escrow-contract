@@ -37,9 +37,26 @@ contract StackOracle {
 
     uint32 public blockTimestampLast;
 
-    constructor(address lpstack, address lpusdt) public {
+    address public immutable WETH;
+    uint256 public immutable USDT;
+    uint256 public immutable STACK;
+
+    constructor(
+        address lpstack,
+        address lpusdt,
+        address weth
+    ) public {
         IUniswapV2Pair _pairWETHUSDT = IUniswapV2Pair(lpusdt);
         pairWETHUSDT = _pairWETHUSDT;
+        WETH = weth;
+        uint256 setUSDT;
+        uint256 setSTACK;
+        if (_pairWETHUSDT.token0() != weth) {
+            setUSDT = 0;
+        } else {
+            setUSDT = 1;
+        }
+        USDT = setUSDT;
 
         price0CumulativeLastWETHUSDT = _pairWETHUSDT.price0CumulativeLast(); // fetch the current accumulated price value
         price1CumulativeLastWETHUSDT = _pairWETHUSDT.price1CumulativeLast(); // fetch the current accumulated price value
@@ -48,14 +65,21 @@ contract StackOracle {
         uint112 reserve1WETHUSDT;
 
         (reserve0WETHUSDT, reserve1WETHUSDT, blockTimestampLast) = _pairWETHUSDT
-        .getReserves();
+            .getReserves();
 
         // ETH/STACK
         IUniswapV2Pair _pairWETHSTACK = IUniswapV2Pair(lpstack);
         pairWETHSTACK = _pairWETHSTACK;
 
+        if (_pairWETHSTACK.token0() != weth) {
+            setSTACK = 0;
+        } else {
+            setSTACK = 1;
+        }
+        STACK = setSTACK;
+
         price0CumulativeLastETHSTACK = _pairWETHSTACK.price0CumulativeLast(); // fetch the current accumulated price value
-        price1CumulativeLastETHSTACK = _pairWETHSTACK.price1CumulativeLast(); // fetch the current accumulated price value
+        price1CumulativeLastETHSTACK = _pairWETHSTACK.price1CumulativeLast();
 
         uint112 reserve0WETHSTACK;
         uint112 reserve1WETHSTACK;
@@ -74,8 +98,8 @@ contract StackOracle {
             uint256 price1CumulativeWETHSTACK,
             uint32 blockTimestamp
         ) = UniswapV2OracleLibrary.currentCumulativePrices(
-            address(pairWETHSTACK)
-        );
+                address(pairWETHSTACK)
+            );
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
 
         // ETH/STACK
@@ -111,8 +135,8 @@ contract StackOracle {
             uint256 price1CumulativeWETHUSDT,
 
         ) = UniswapV2OracleLibrary.currentCumulativePrices(
-            address(pairWETHUSDT)
-        );
+                address(pairWETHUSDT)
+            );
         // ETH / USDT
         price0AverageWETHUSDT = FixedPoint.uq112x112(
             uint224(
@@ -140,7 +164,13 @@ contract StackOracle {
         view
         returns (uint256 amountOut)
     {
-        uint256 wethAmount = price1AverageWETHUSDT.mul(amountIn).decode144();
-        amountOut = price1AverageWETHSTACK.mul(wethAmount).decode144();
+        uint256 wethAmount;
+        if (USDT == 0)
+            wethAmount = price0AverageWETHUSDT.mul(amountIn).decode144();
+        else wethAmount = price1AverageWETHUSDT.mul(amountIn).decode144();
+
+        if (STACK == 0)
+            amountOut = price1AverageWETHSTACK.mul(wethAmount).decode144();
+        else amountOut = price0AverageWETHSTACK.mul(wethAmount).decode144();
     }
 }

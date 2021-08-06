@@ -8,7 +8,6 @@ import "../cluster-metadata/IDnsClusterMetadataStore.sol";
 /// @notice Used for maintaining state of StackOS Resource's components prices
 contract ResourceFeed is Ownable {
     address public stackToken;
-    address public USDToken;
     address public clusterMetadataStore;
 
     // votingWeightPerUtilisedFUnds;
@@ -69,11 +68,9 @@ contract ResourceFeed is Ownable {
     /*
      * @dev - constructor (being called at contract deployment)
      * @param Address of stackToken deployed contract
-     * @param Address of USDT(basecurrency) deployed contract
      */
-    constructor(address _stackToken, address _USDToken) public {
+    constructor(address _stackToken) public {
         stackToken = _stackToken;
-        USDToken = _USDToken;
     }
 
     /*
@@ -198,12 +195,9 @@ contract ResourceFeed is Ownable {
         returns (uint256)
     {
         Resource storage resource = resources[clusterDns][name];
-        require(
-            keccak256(abi.encodePacked(resource.name)) ==
-                keccak256(abi.encodePacked(name)),
-            "Resource not added."
-        );
-        return resource.votingWeightPerUnit;
+        if(keccak256(abi.encodePacked(resource.name)) ==
+                keccak256(abi.encodePacked(name))) return resource.votingWeightPerUnit;
+        else return 0; 
     }
 
     /*

@@ -3,12 +3,13 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../escrow/IEscrow.sol";
 import "../resource-feed/IResourceFeed.sol";
+import "../escrow/EscrowLib.sol";
 
 /// @title DnsClusterMetadataStore is a Contract which is ownership functionality
 /// @notice Used for maintaining state of Clusters & there voting
 contract DnsClusterMetadataStore is Ownable {
     address public stakingContract;
-    IEscrow public escrow;
+    address public escrowAddress;
     IResourceFeed public resourceFeed;
 
     struct ClusterMetadata {
@@ -55,8 +56,8 @@ contract DnsClusterMetadataStore is Ownable {
      * @param deployed Address of Escrow Contract
      * @dev Could only be called by the Owner of contract
      */
-    function setEscrowContract(IEscrow _escrow) public onlyOwner {
-        escrow = _escrow;
+    function setEscrowContract(address _escrow) public onlyOwner {
+        escrowAddress = _escrow;
     }
 
     /*
@@ -73,6 +74,8 @@ contract DnsClusterMetadataStore is Ownable {
         string memory _ipAddress,
         string memory _whitelistedIps
     ) public onlyStakingContract {
+        ClusterMetadata memory clusterMetadata = dnsToClusterMetadata[_dns];
+        require(clusterMetadata.clusterOwner == address(0));
         ClusterMetadata memory metadata = ClusterMetadata(
             _clusterOwner,
             _ipAddress,
@@ -107,29 +110,21 @@ contract DnsClusterMetadataStore is Ownable {
      */
     function upvoteCluster(bytes32 _dns) public {
         // check here if _dns = deposit.clusterDns
-        (
-            bytes32 clusterDns,
-            uint256 cpuCoresUnits,
-            uint256 diskSpaceUnits,
-            uint256 bandwithUnits,
-            uint256 memoryUnits,
-            ,
-            ,
-            ,
-
-        ) = escrow.deposits(msg.sender);
-        require(
-            _dns == clusterDns,
-            "Invalid Deposit to cluster mapping in escrow"
+        EscrowLib.Deposit memory deposit = IEscrow(escrowAddress).getDeposits(
+            msg.sender,
+            _dns
         );
-
         // make this a function of utilised funds
         uint256 votingCapacity = getTotalVotes(
-            clusterDns,
-            cpuCoresUnits,
-            diskSpaceUnits,
-            bandwithUnits,
-            memoryUnits
+            deposit.resourceOneUnits,
+            deposit.resourceTwoUnits,
+            deposit.resourceThreeUnits,
+            deposit.resourceFourUnits, // memoryUnits
+            deposit.resourceFiveUnits,
+            deposit.resourceSixUnits,
+            deposit.resourceSevenUnits,
+            deposit.resourceEightUnits,
+            _dns
         );
         require(
             clusterUpvotes[_dns][msg.sender] < votingCapacity,
@@ -164,7 +159,7 @@ contract DnsClusterMetadataStore is Ownable {
 
     function _calculateVotesPerResource(
         bytes32 clusterDns,
-        string calldata name,
+        string memory name,
         uint256 resourceUnits
     ) internal view returns (uint256) {
         return
@@ -181,22 +176,70 @@ contract DnsClusterMetadataStore is Ownable {
      * @return number of votes
      */
     function getTotalVotes(
-        bytes32 clusterDns,
-        uint256 cpuCoresUnits,
-        uint256 diskSpaceUnits,
-        uint256 bandwidthUnits,
-        uint256 memoryUnits
-    ) public view returns (uint256 votes) {
-        votes = _calculateVotesPerResource(clusterDns, "cpu", cpuCoresUnits);
+        uint256 resourceOneUnits, // cpuCoresUnits
+        uint256 resourceTwoUnits, // diskSpaceUnits
+        uint256 resourceThreeUnits, // bandwidthUnits
+        uint256 resourceFourUnits, // memoryUnits
+        uint256 resourceFiveUnits,
+        uint256 resourceSixUnits,
+        uint256 resourceSevenUnits,
+        uint256 resourceEightUnits,
+        bytes32 clusterDns
+    ) public returns (uint256 votes) {
+        votes = _calculateVotesPerResource(
+            clusterDns,
+            IEscrow(escrowAddress).getResouceVar(1),
+            resourceOneUnits
+        );
         votes =
             votes +
-            _calculateVotesPerResource(clusterDns, "memory", memoryUnits);
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(2),
+                resourceTwoUnits
+            );
         votes =
             votes +
-            _calculateVotesPerResource(clusterDns, "bandwidth", bandwidthUnits);
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(3),
+                resourceThreeUnits
+            );
         votes =
             votes +
-            _calculateVotesPerResource(clusterDns, "disk", diskSpaceUnits);
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(4),
+                resourceFourUnits
+            );
+        votes =
+            votes +
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(5),
+                resourceFiveUnits
+            );
+        votes =
+            votes +
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(6),
+                resourceSixUnits
+            );
+        votes =
+            votes +
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(7),
+                resourceSevenUnits
+            );
+        votes =
+            votes +
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(7),
+                resourceEightUnits
+            );
     }
 
     function getClusterOwner(bytes32 clusterDns) public view returns (address) {
