@@ -119,15 +119,27 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @title Update the Platform fee receiver address
      * @param DAO address
      * @param Governance address
+     * @param Oracle address
+     * @param Resource Feed address
+     * @param Staking address
+     * @param Dns Store address
      * @dev Could only be invoked by the contract owner
      */
 
-    function setFeeAddress(address _daoAddress, address _govAddress)
-        public
-        onlyOwner
-    {
+    function setAddressSettings(
+        address _daoAddress,
+        address _govAddress,
+        address _oracle,
+        address _resourceFeed,
+        address _staking,
+        address _dnsStore
+    ) public onlyOwner {
         dao = _daoAddress;
         gov = _govAddress;
+        oracle = _oracle;
+        resourceFeed = _resourceFeed;
+        staking = _staking;
+        dnsStore = _dnsStore;
     }
 
     /*
@@ -416,7 +428,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         bool grant
     ) internal {
         (, , , , , , , bool active, , ) = IDnsClusterMetadataStore(dnsStore)
-        .dnsToClusterMetadata(clusterDns);
+            .dnsToClusterMetadata(clusterDns);
         require(active == true);
 
         EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];

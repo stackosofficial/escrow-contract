@@ -76,10 +76,15 @@ contract Staking is Ownable {
     /*
      * @title Update the dao address
      * @param Updated dao address
+     * @param Dns Cluster Store address
      * @dev Could only be invoked by the contract owner
      */
-    function setDaoAddress(address _daoAddress) public onlyOwner {
+    function setAddressSettings(address _daoAddress, address _dnsClusterStore)
+        public
+        onlyOwner
+    {
         daoAddress = _daoAddress;
+        dnsClusterStore = _dnsClusterStore;
     }
 
     /*
@@ -192,8 +197,8 @@ contract Staking is Ownable {
                 ,
 
             ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
-                stake.dns
-            );
+                    stake.dns
+                );
             uint256 slash;
             if (isDefaulter == true) {
                 slash = (downvotes / upvotes) * slashFactor;
@@ -241,8 +246,8 @@ contract Staking is Ownable {
             ,
 
         ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
-            stake.dns
-        );
+                stake.dns
+            );
         require(
             !isDefaulter,
             "Stakers marked as defaulters are not eligible to claim the rewards"

@@ -47,10 +47,15 @@ contract DnsClusterMetadataStore is Ownable {
     /*
      * @title - Modifies the staking contract Address
      * @param deployed Address of Staking Contract
+     * @param deployed Address of Resource Feed Contract
      * @dev Could only be called by the Owner of contract
      */
-    function setStakingContract(address _stakingContract) public onlyOwner {
+    function setAddressSettings(address _stakingContract, address _resourceFeed)
+        public
+        onlyOwner
+    {
         stakingContract = _stakingContract;
+        resourceFeed = _resourceFeed;
     }
 
     /*
