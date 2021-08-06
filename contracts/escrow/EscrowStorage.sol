@@ -5,14 +5,14 @@ import "./EscrowLib.sol";
 
 contract EscrowStorage {
     address internal stackToken;
-    address public resourceFeed;
-    address public staking;
+    address internal resourceFeed;
+    address internal staking;
     address public dao;
     address public gov;
     uint256 public govFee;
     uint256 public daoFee;
     uint256 public communityDeposits;
-    address public dnsStore;
+    address internal dnsStore;
     IUniswapV2Factory internal factory;
     IUniswapV2Router02 internal router;
     address internal weth;

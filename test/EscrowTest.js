@@ -130,8 +130,8 @@ contract("StackEscrow", (accounts) => {
   // In the future you need to connect it to the staking contract.
 
   describe("Set staking Contract. (Temp for testing.)", async () => {
-    it("setStakingContract()", async () => {
-      await dnsCluster.setStakingContract(accounts[0]);
+    it("setAddressSetting()", async () => {
+      await dnsCluster.setAddressSetting(accounts[0]);
       assert.equal(
         (await dnsCluster.stakingContract.call()) == accounts[0],
         true
@@ -146,8 +146,8 @@ contract("StackEscrow", (accounts) => {
         clusterProviderWallet,
         "120.231.231.21",
         "120.231.231.21",
-        "High",
-        true
+        "Hi",
+        false
       );
       await dnsCluster.dnsToClusterMetadata(clusterDns).then(function (c) {
         var clusterOwner = c["clusterOwner"];
@@ -161,7 +161,9 @@ contract("StackEscrow", (accounts) => {
           clusterDns,
           clusterProviderWallet,
           "120.231.231.21",
-          "120.231.231.21"
+          "120.231.231.21",
+          "Hi",
+          false
         );
         assert.fail("This transaction should have thrown an error.");
       } catch (err) {
@@ -238,8 +240,8 @@ contract("StackEscrow", (accounts) => {
       var amountOutMin = 0;
       var path = [WETH, StackTokenMainNet];
       var deadline = Math.floor(Date.now() / 1000) + 1200;
-      // 0.5 Eth
-      var amount = "100000000000000000";
+      // 1 Eth
+      var amount = "1000000000000000000";
 
       await uniswapV2Router.swapExactETHForTokens(
         amountOutMin,
@@ -352,6 +354,10 @@ contract("StackEscrow", (accounts) => {
 
   describe("Cluster owner settles the account for developer half time though", async () => {
     it("updateResourcesByStackAmount() - 2", async () => {
+      await stackToken
+        .balanceOf(developerWallet)
+        .then((c) => console.log(c.toString()));
+
       await stackEscrow.updateResourcesFromStack(
         clusterDns,
         [1, 1, 1, 1, 1, 1, 0, 0],
@@ -551,6 +557,9 @@ contract("StackEscrow", (accounts) => {
 
   describe("Community Grant deposit and issue.", async () => {
     it("Community Grant Deposit communityDeposit()", async () => {
+      await stackToken
+        .balanceOf(developerWallet)
+        .then((c) => console.log(c.toString()));
       await stackEscrow.communityDeposit("300000000000000000000", {
         from: developerWallet,
       });
@@ -665,6 +674,10 @@ contract("StackEscrow", (accounts) => {
         assert.equal(resourceFive == 0, true);
         assert.equal(resourceSix == 0, true);
       });
+
+      await stackToken
+        .balanceOf(developerWallet)
+        .then((c) => console.log(c.toString()));
 
       await stackEscrow.updateResourcesFromStack(
         clusterDns,
