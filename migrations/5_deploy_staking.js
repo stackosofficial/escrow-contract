@@ -5,6 +5,7 @@ const _stakingAmount = "100000000000000000000";
 const _slashFactor = "500000000000000000";
 const _rewardsPerUpvote = "100000000000000000";
 const _rewardsPerShare = "100000000000000000";
+const _daoAddress = "0x7d2f88933e52C352549c748BB572F3c383528fF2";
 
 module.exports = function (deployer) {
   deployer.then(async () => {
@@ -17,7 +18,8 @@ module.exports = function (deployer) {
       _stakingAmount,
       _slashFactor,
       _rewardsPerUpvote,
-      _rewardsPerShare
+      _rewardsPerShare,
+      _daoAddress
     );
   });
 };

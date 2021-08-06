@@ -8,6 +8,7 @@ import "../cluster-metadata/IDnsClusterMetadataStore.sol";
 contract Staking is Ownable {
     uint256 constant EXP = 10**18;
     uint256 constant DAY = 86400;
+    uint256 public lockAmountForBlocks = 500000;
     address public stackToken;
     address public dnsClusterStore;
     uint256 public slashFactor;
@@ -15,6 +16,7 @@ contract Staking is Ownable {
     uint256 public rewardsPerUpvote;
     uint256 public stakingAmount;
     uint256 public slashCollected;
+    address public daoAddress;
 
     struct Stake {
         uint256 amount;
@@ -26,6 +28,8 @@ contract Staking is Ownable {
     }
 
     mapping(address => Stake) public stakes;
+
+    mapping(address => uint256) public lockTime;
 
     event SlashCollectedLog(
         address collector,
@@ -48,7 +52,8 @@ contract Staking is Ownable {
         uint256 _stakingAmount,
         uint256 _slashFactor,
         uint256 _rewardsPerUpvote,
-        uint256 _rewardsPerShare
+        uint256 _rewardsPerShare,
+        address _daoAddress
     ) public {
         stackToken = _stackToken;
         dnsClusterStore = _dnsClusterStore;
@@ -56,6 +61,7 @@ contract Staking is Ownable {
         slashFactor = _slashFactor;
         rewardsPerUpvote = _rewardsPerUpvote;
         rewardsPerShare = _rewardsPerShare;
+        daoAddress = _daoAddress;
     }
 
     /*
@@ -65,6 +71,15 @@ contract Staking is Ownable {
      */
     function setStakingAmount(uint256 _stakingAmount) public onlyOwner {
         stakingAmount = _stakingAmount;
+    }
+
+    /*
+     * @title Update the dao address
+     * @param Updated dao address
+     * @dev Could only be invoked by the contract owner
+     */
+    function setDaoAddress(address _daoAddress) public onlyOwner {
+        daoAddress = _daoAddress;
     }
 
     /*
@@ -86,6 +101,19 @@ contract Staking is Ownable {
     }
 
     /*
+     * @title Update the Amount Locked For Blocks
+     * @param Updated number of blocks till the value is locked
+     * @dev Could only be invoked by the dao address
+     */
+    function setLockAmountForBlocks(uint256 _lockAmountForBlocks) public {
+        require(
+            msg.sender == daoAddress,
+            "You are not allowed to change this variable"
+        );
+        lockAmountForBlocks = _lockAmountForBlocks;
+    }
+
+    /*
      * @title Users could stake there stack tokens
      * @param Number of stack tokens to stake
      * @param Name of DNS
@@ -97,7 +125,9 @@ contract Staking is Ownable {
         uint256 _amount,
         bytes32 _dns,
         string memory _ipAddress,
-        string memory _whitelistedIps
+        string memory _whitelistedIps,
+        string memory _clusterType,
+        bool _isPrivate
     ) public returns (bool) {
         require(
             _amount > stakingAmount,
@@ -115,8 +145,21 @@ contract Staking is Ownable {
             _dns,
             address(msg.sender),
             _ipAddress,
-            _whitelistedIps
+            _whitelistedIps,
+            _clusterType,
+            _isPrivate
         );
+        return true;
+    }
+
+    /*
+     * @title Staker could revoke withdrawal request
+     * @param Set lockTime for the sender to be zero
+     * @return True if successfully invoked
+     */
+
+    function revokeWithdrawalRequest() public returns (bool) {
+        lockTime[msg.sender] = 0;
         return true;
     }
 
@@ -125,45 +168,55 @@ contract Staking is Ownable {
      * @param Amount of stack tokens to unstake
      * @return True if successfully invoked
      */
+
     function withdraw(uint256 _amount) public returns (bool) {
-        Stake storage stake = stakes[msg.sender];
-        require(stake.amount >= _amount, "Insufficient amount to withdraw");
-
-        (
-            ,
-            ,
-            ,
-            uint256 upvotes,
-            uint256 downvotes,
-            bool isDefaulter,
-            ,
-
-        ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
-            stake.dns
-        );
-        uint256 slash;
-        if (isDefaulter == true) {
-            slash = (downvotes / upvotes) * slashFactor;
-        }
-        uint256 actualWithdrawAmount;
-        if (_amount > slash) {
-            actualWithdrawAmount = _amount - slash;
+        if (lockTime[msg.sender] == 0) {
+            lockTime[msg.sender] = block.number + lockAmountForBlocks;
         } else {
-            actualWithdrawAmount = 0;
-        }
-        stake.lastWithdraw = block.timestamp;
-        stake.amount = stake.amount - (actualWithdrawAmount + slash);
-        if (stake.amount <= 0) {
-            // Remove entry from metadata contract
-            IDnsClusterMetadataStore(dnsClusterStore).removeDnsToClusterEntry(
+            require(
+                block.number >= lockTime[msg.sender],
+                "You are not allowed to withdraw as withdrawal locked time is not passed yet"
+            );
+            Stake storage stake = stakes[msg.sender];
+            require(stake.amount >= _amount, "Insufficient amount to withdraw");
+
+            (
+                ,
+                ,
+                ,
+                uint256 upvotes,
+                uint256 downvotes,
+                bool isDefaulter,
+                ,
+                ,
+                ,
+
+            ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(
                 stake.dns
             );
-        }
-        stake.share = _calcStakedShare(stake.amount, msg.sender);
-        slashCollected = slashCollected + slash;
+            uint256 slash;
+            if (isDefaulter == true) {
+                slash = (downvotes / upvotes) * slashFactor;
+            }
+            uint256 actualWithdrawAmount;
+            if (_amount > slash) {
+                actualWithdrawAmount = _amount - slash;
+            } else {
+                actualWithdrawAmount = 0;
+            }
+            stake.lastWithdraw = block.timestamp;
+            stake.amount = stake.amount - (actualWithdrawAmount + slash);
+            if (stake.amount <= 0) {
+                // Remove entry from metadata contract
+                IDnsClusterMetadataStore(dnsClusterStore)
+                    .removeDnsToClusterEntry(stake.dns);
+            }
+            stake.share = _calcStakedShare(stake.amount, msg.sender);
+            slashCollected = slashCollected + slash;
 
-        IERC20(stackToken).transfer(msg.sender, actualWithdrawAmount);
-        return true;
+            IERC20(stackToken).transfer(msg.sender, actualWithdrawAmount);
+            return true;
+        }
     }
 
     /*
@@ -183,6 +236,8 @@ contract Staking is Ownable {
             uint256 upvotes,
             ,
             bool isDefaulter,
+            ,
+            ,
             ,
 
         ) = IDnsClusterMetadataStore(dnsClusterStore).dnsToClusterMetadata(

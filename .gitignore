@@ -1,1 +1,7 @@
+node_modules/
+build/
 .DS_Store
+.key
+artifacts
+cache/
+package-lock.json

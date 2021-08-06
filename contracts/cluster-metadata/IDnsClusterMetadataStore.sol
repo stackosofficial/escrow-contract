@@ -12,6 +12,8 @@ interface IDnsClusterMetadataStore {
             uint256,
             bool,
             uint256,
+            bool,
+            string memory,
             bool
         );
 
@@ -19,7 +21,9 @@ interface IDnsClusterMetadataStore {
         bytes32 _dns,
         address _clusterOwner,
         string memory ipAddress,
-        string memory _whitelistedIps
+        string memory _whitelistedIps,
+        string memory _clusterType,
+        bool _isPrivate
     ) external;
 
     function removeDnsToClusterEntry(bytes32 _dns) external;

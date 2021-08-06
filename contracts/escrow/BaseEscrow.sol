@@ -191,6 +191,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
             ,
             ,
             uint256 qualityFactor,
+            ,
+            ,
 
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
 
@@ -413,8 +415,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
         bool withdrawable,
         bool grant
     ) internal {
-        (, , , , , , , bool active) = IDnsClusterMetadataStore(dnsStore)
-            .dnsToClusterMetadata(clusterDns);
+        (, , , , , , , bool active, , ) = IDnsClusterMetadataStore(dnsStore)
+        .dnsToClusterMetadata(clusterDns);
         require(active == true);
 
         EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];
@@ -567,6 +569,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
             ,
             ,
             uint256 qualityFactor,
+            ,
+            ,
 
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
         if (everything == false) {
