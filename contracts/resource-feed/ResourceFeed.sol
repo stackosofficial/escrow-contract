@@ -3,12 +3,15 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../cluster-metadata/IDnsClusterMetadataStore.sol";
+import "../escrow/IEscrow.sol";
+import "../escrow/EscrowLib.sol";
 
 /// @title ResourceFeed is a Contract which is ownership functionality
 /// @notice Used for maintaining state of StackOS Resource's components prices
 contract ResourceFeed is Ownable {
     address public stackToken;
     address public clusterMetadataStore;
+    address public escrowAddress;
 
     // votingWeightPerUtilisedFUnds;
 
@@ -19,29 +22,14 @@ contract ResourceFeed is Ownable {
     }
 
     mapping(bytes32 => mapping(string => Resource)) public resources;
-
-    struct ResourceUnits {
-        uint256 resourceOneUnits; // cpuCoresUnits
-        uint256 resourceTwoUnits; // diskSpaceUnits
-        uint256 resourceThreeUnits; // bandwidthUnits
-        uint256 resourceFourUnits; // memoryUnits
-        uint256 resourceFiveUnits;
-        uint256 resourceSixUnits;
-        uint256 resourceSevenUnits;
-        uint256 resourceEightUnits;
-    }
-
-    mapping(bytes32 => mapping(address => ResourceUnits))
-        public resourcesMaxPerDNSforAddress;
-
-    mapping(bytes32 => ResourceUnits) public resourcesMaxPerDNS;
+    mapping(bytes32 => EscrowLib.ResourceUnits) public resourcesMaxPerDNS;
 
     function setResourceMaxCapacity(
         bytes32 clusterDns,
-        ResourceUnits memory maxUnits
+        EscrowLib.ResourceUnits memory maxUnits
     ) public {
         address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
+            .getClusterOwner(clusterDns);
         require(clusterOwner == msg.sender, "Not the cluster owner!");
         resourcesMaxPerDNS[clusterDns] = maxUnits;
     }
@@ -49,20 +37,9 @@ contract ResourceFeed is Ownable {
     function getResourceMaxCapacity(bytes32 clusterDns)
         external
         view
-        returns (ResourceUnits memory)
+        returns (EscrowLib.ResourceUnits memory)
     {
         return resourcesMaxPerDNS[clusterDns];
-    }
-
-    function setResourceAddressMaxCapacity(
-        bytes32 clusterDns,
-        address wallet,
-        ResourceUnits memory maxUnits
-    ) public {
-        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
-        require(clusterOwner == msg.sender, "Not the cluster owner!");
-        resourcesMaxPerDNSforAddress[clusterDns][wallet] = maxUnits;
     }
 
     /*
@@ -82,24 +59,30 @@ contract ResourceFeed is Ownable {
      * @dev Could only be invoked by the contract owner
      */
 
-    function setclusterMetadataStore(address _clustermetadatastore)
+    function setAddressSetting(address _clustermetadatastore, address _escrow)
         public
         onlyOwner
     {
         clusterMetadataStore = _clustermetadatastore;
+        escrowAddress = _escrow;
     }
 
     // Added in Dollar value.
     function addResource(
         bytes32 clusterDns,
-        string memory name,
+        uint8 resourceID,
         uint256 dripRatePerUnit
     ) public returns (bool) {
         address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
+            .getClusterOwner(clusterDns);
         require(clusterOwner == msg.sender, "Not the cluster owner!");
-        Resource storage resource = resources[clusterDns][name];
-        resource.name = name;
+        require(
+            bytes(IEscrow(escrowAddress).getResouceVar(resourceID)).length != 0
+        );
+        Resource storage resource = resources[clusterDns][
+            IEscrow(escrowAddress).getResouceVar(resourceID)
+        ];
+        resource.name = IEscrow(escrowAddress).getResouceVar(resourceID);
         resource.dripRatePerUnit = dripRatePerUnit;
         return true;
     }
@@ -110,14 +93,22 @@ contract ResourceFeed is Ownable {
      * @return True if successfully invoked
      * @dev Could only be invoked by the contract owner
      */
-    function removeResource(bytes32 clusterDns, string memory name)
+    function removeResource(bytes32 clusterDns, uint8 resourceID)
         public
         returns (bool)
     {
-        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
-        require(clusterOwner == msg.sender, "Not the cluster owner!");
-        delete resources[clusterDns][name];
+        require(
+            bytes(IEscrow(escrowAddress).getResouceVar(resourceID)).length != 0
+        );
+        require(
+            IDnsClusterMetadataStore(clusterMetadataStore).getClusterOwner(
+                clusterDns
+            ) == msg.sender,
+            "Not the cluster owner!"
+        );
+        delete resources[clusterDns][
+            IEscrow(escrowAddress).getResouceVar(resourceID)
+        ];
         return true;
     }
 
@@ -133,7 +124,7 @@ contract ResourceFeed is Ownable {
         uint256 dripRatePerUnit
     ) public returns (bool) {
         address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
+            .getClusterOwner(clusterDns);
         require(clusterOwner == msg.sender, "Not the cluster owner!");
         Resource storage resource = resources[clusterDns][name];
         require(
@@ -163,17 +154,13 @@ contract ResourceFeed is Ownable {
      * @title Update resource's voting weight
      * @param name of the resource
      * @param New voting weight for the resource
-     * @return True if successfully invoked
      * @dev Could only be invoked by the contract owner
      */
     function setResourceVotingWeight(
         bytes32 clusterDns,
         string calldata name,
         uint256 votingWeightPerUnit
-    ) public returns (bool) {
-        address clusterOwner = IDnsClusterMetadataStore(clusterMetadataStore)
-        .getClusterOwner(clusterDns);
-        require(clusterOwner == msg.sender, "Not the cluster owner!");
+    ) public onlyOwner {
         Resource storage resource = resources[clusterDns][name];
         require(
             keccak256(abi.encodePacked(resource.name)) ==
@@ -181,7 +168,6 @@ contract ResourceFeed is Ownable {
             "Resource not added."
         );
         resource.votingWeightPerUnit = votingWeightPerUnit;
-        return true;
     }
 
     /*
@@ -195,9 +181,11 @@ contract ResourceFeed is Ownable {
         returns (uint256)
     {
         Resource storage resource = resources[clusterDns][name];
-        if(keccak256(abi.encodePacked(resource.name)) ==
-                keccak256(abi.encodePacked(name))) return resource.votingWeightPerUnit;
-        else return 0; 
+        if (
+            keccak256(abi.encodePacked(resource.name)) ==
+            keccak256(abi.encodePacked(name))
+        ) return resource.votingWeightPerUnit;
+        else return 0;
     }
 
     /*

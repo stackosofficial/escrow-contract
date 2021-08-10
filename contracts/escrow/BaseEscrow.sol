@@ -80,39 +80,9 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Updated Platform DAO Fee
      * @dev Could only be invoked by the contract owner
      */
-    function setVariableFees(uint256 _govFee, uint256 _daoFee)
-        public
-        onlyOwner
-    {
+    function setVariableFees(uint8 _govFee, uint8 _daoFee) public onlyOwner {
         govFee = _govFee;
         daoFee = _daoFee;
-    }
-
-    /*
-     * @title Update the Platform fixed Fees. These fees are in USDT value.
-     * @param Allocated for DAO or Governance
-     * @param ResourcesFees. A list of 8 item that includes fee per resource. Available resources and their order -> resourceVar(id) (1-8)
-     * @dev Could only be invoked by the contract owner
-     */
-
-    function setFixedFees(
-        string memory allocatedFor,
-        EscrowLib.ResourceFees memory resourceUnits
-    ) public onlyOwner {
-        EscrowLib.ResourceFees storage resourcefees = fixedResourceFee[
-            allocatedFor
-        ];
-        resourcefees.resourceOneUnitsFee = resourceUnits.resourceOneUnitsFee;
-        resourcefees.resourceTwoUnitsFee = resourceUnits.resourceTwoUnitsFee;
-        resourcefees.resourceThreeUnitsFee = resourceUnits
-            .resourceThreeUnitsFee;
-        resourcefees.resourceFourUnitsFee = resourceUnits.resourceFourUnitsFee;
-        resourcefees.resourceFiveUnitsFee = resourceUnits.resourceFiveUnitsFee;
-        resourcefees.resourceSixUnitsFee = resourceUnits.resourceSixUnitsFee;
-        resourcefees.resourceSevenUnitsFee = resourceUnits
-            .resourceSevenUnitsFee;
-        resourcefees.resourceEightUnitsFee = resourceUnits
-            .resourceEightUnitsFee;
     }
 
     /*
@@ -166,7 +136,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         return deposits[depositer][clusterDns];
     }
 
-    function getResouceVar(uint16 _id) external view returns (string memory) {
+    function getResouceVar(uint8 _id) external view returns (string memory) {
         return resourceVar[_id];
     }
 
@@ -184,6 +154,27 @@ contract BaseEscrow is Ownable, EscrowStorage {
     }
 
     /*
+     * @title Emergency refund
+     * @param Depositer Address
+     * @param ClusterDNS that is being settled
+     * @dev Could only be invoked by the contract owner
+     */
+    function EmergencyRefundByClusterOwner(
+        address depositer,
+        bytes32 clusterDns
+    ) public {
+        (address clusterOwner, , , , , , , , , ) = IDnsClusterMetadataStore(
+            dnsStore
+        ).dnsToClusterMetadata(clusterDns);
+        require(clusterOwner == msg.sender);
+        EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];
+        uint256 depositAmount = deposit.totalDeposit;
+        require(depositAmount > 0);
+        delete deposits[depositer][clusterDns];
+        IERC20(stackToken).transfer(dao, deposit.totalDeposit);
+    }
+
+    /*
      * @title Settle Depositer Account
      * @param Depositer Address
      * @param ClusterDNS that is being settled
@@ -192,7 +183,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     function settleAccounts(address depositer, bytes32 clusterDns) public {
         uint256 utilisedFunds;
         EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];
-        uint256 elapsedTime = block.timestamp - deposit.lastTxTime;
+        uint256 elapsedTime = block.timestamp.sub(deposit.lastTxTime);
         deposit.lastTxTime = block.timestamp;
 
         (
@@ -207,35 +198,41 @@ contract BaseEscrow is Ownable, EscrowStorage {
             ,
 
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
-
-        uint256 MaxPossibleElapsedTime = deposit.totalDeposit /
+        uint256 MaxPossibleElapsedTime;
+        if (
             IPriceOracle(oracle).usdtToSTACKOracle(
                 deposit.totalDripRatePerSecond
+            ) == 0
+        ) MaxPossibleElapsedTime = ~uint256(0);
+        else
+            MaxPossibleElapsedTime = deposit.totalDeposit.div(
+                IPriceOracle(oracle).usdtToSTACKOracle(
+                    deposit.totalDripRatePerSecond
+                )
             );
 
         if (elapsedTime > MaxPossibleElapsedTime) {
             elapsedTime = MaxPossibleElapsedTime;
             utilisedFunds = deposit.totalDeposit;
         } else {
-            utilisedFunds = elapsedTime * deposit.totalDripRatePerSecond;
+            utilisedFunds = elapsedTime.mul(deposit.totalDripRatePerSecond);
             utilisedFunds = IPriceOracle(oracle).usdtToSTACKOracle(
                 utilisedFunds
             );
         }
 
         // Add fees to utilised funds.
-        uint256 fixAndVarDaoGovFee = _AddFixedFeesAndDeduct(
-            utilisedFunds,
-            elapsedTime,
-            deposit
-        );
+        uint256 VarDaoGovFee = _AddFeesAndDeduct(utilisedFunds);
 
-        utilisedFunds = utilisedFunds + fixAndVarDaoGovFee;
-        if (deposit.notWithdrawable > 0) {
-            deposit.notWithdrawable = deposit.notWithdrawable - utilisedFunds;
-        }
+        utilisedFunds = utilisedFunds.add(VarDaoGovFee);
+        if (
+            deposit.notWithdrawable > 0 &&
+            deposit.notWithdrawable >= utilisedFunds
+        ) deposit.notWithdrawable = deposit.notWithdrawable.sub(utilisedFunds);
+        if (deposit.notWithdrawable <= utilisedFunds)
+            deposit.notWithdrawable = 0;
         if (utilisedFunds >= deposit.totalDeposit) {
-            utilisedFunds = deposit.totalDeposit - fixAndVarDaoGovFee;
+            utilisedFunds = deposit.totalDeposit.sub(VarDaoGovFee);
             reduceClusterCap(clusterDns, depositer);
             delete deposits[depositer][clusterDns];
             removeClusterAddresConnection(
@@ -243,8 +240,8 @@ contract BaseEscrow is Ownable, EscrowStorage {
                 findAddressIndex(clusterDns, depositer)
             );
         } else {
-            deposit.totalDeposit = deposit.totalDeposit - utilisedFunds;
-            utilisedFunds = utilisedFunds - fixAndVarDaoGovFee;
+            deposit.totalDeposit = deposit.totalDeposit.sub(utilisedFunds);
+            utilisedFunds = utilisedFunds.sub(VarDaoGovFee);
         }
 
         _withdraw(utilisedFunds, 0, depositer, clusterOwner, qualityFactor);
@@ -301,111 +298,18 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @dev Part of the settelmet functions
      */
 
-    function _AddFixedFeesAndDeduct(
-        uint256 utilisedFunds,
-        uint256 timeelapsed,
-        EscrowLib.Deposit memory resourceUnits
-    ) internal returns (uint256) {
-        uint256 daoFeesFixed = _getFixedFee(resourceUnits, timeelapsed, "dao");
-        uint256 govFeesFixed = _getFixedFee(resourceUnits, timeelapsed, "gov");
+    function _AddFeesAndDeduct(uint256 utilisedFunds)
+        internal
+        returns (uint256)
+    {
+        uint256 variableDaoFee = utilisedFunds.mul(daoFee).div(10000);
+        uint256 variableGovFee = utilisedFunds.mul(govFee).div(10000);
 
-        (uint256 variableDaoFee, uint256 variableGovFee) = _AddVariablesFees(
-            utilisedFunds,
-            daoFee,
-            govFee
-        );
-
-        if (daoFeesFixed > 0)
-            IERC20(stackToken).transfer(dao, (daoFeesFixed + variableDaoFee));
-        if (govFeesFixed > 0)
-            IERC20(stackToken).transfer(gov, (govFeesFixed + variableGovFee));
-        return
-            (daoFeesFixed + variableDaoFee) + (govFeesFixed + variableGovFee);
-    }
-
-    function _getFixedFee(
-        EscrowLib.Deposit memory resourceUnits,
-        uint256 timeelapsed,
-        string memory govOrDao
-    ) internal view returns (uint256) {
-        EscrowLib.ResourceFees storage fixedFees = fixedResourceFee[govOrDao];
-        return
-            _calculateFixedFee(
-                resourceUnits.resourceOneUnits,
-                fixedFees.resourceOneUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceOneUnits,
-                fixedFees.resourceOneUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceTwoUnits,
-                fixedFees.resourceTwoUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceThreeUnits,
-                fixedFees.resourceThreeUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceFourUnits,
-                fixedFees.resourceFourUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceFiveUnits,
-                fixedFees.resourceFiveUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceSixUnits,
-                fixedFees.resourceSixUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceSevenUnits,
-                fixedFees.resourceSevenUnitsFee,
-                timeelapsed
-            ) +
-            _calculateFixedFee(
-                resourceUnits.resourceEightUnits,
-                fixedFees.resourceEightUnitsFee,
-                timeelapsed
-            );
-    }
-
-    function _calculateFixedFee(
-        uint256 resourceUnit,
-        uint256 FixedFeesForUnit,
-        uint256 timeElapsed
-    ) internal pure returns (uint256) {
-        if (resourceUnit > 0) {
-            return (resourceUnit * FixedFeesForUnit * timeElapsed);
-        } else {
-            return 0;
-        }
-    }
-
-    /*
-     * @title Part of AddFixedFeesAndDeduct
-     * @param Utilised funds in stack
-     * @dev Part of the settelmet functions
-     * @return Variable fees for dao and gov
-     */
-
-    function _AddVariablesFees(
-        uint256 utilisedFunds,
-        uint256 daoFee,
-        uint256 govFee
-    ) internal pure returns (uint256, uint256) {
-        // Settle Dao and Gov
-        uint256 forDao = (utilisedFunds * daoFee) / 10000;
-        uint256 forGov = (utilisedFunds * govFee) / 10000;
-
-        return (forDao, forGov);
+        if (variableDaoFee > 0)
+            IERC20(stackToken).transfer(dao, variableDaoFee);
+        if (variableGovFee > 0)
+            IERC20(stackToken).transfer(gov, variableGovFee);
+        return variableDaoFee.add(variableGovFee);
     }
 
     /*
@@ -455,37 +359,37 @@ contract BaseEscrow is Ownable, EscrowStorage {
         if (withdrawable == false) {
             deposit.notWithdrawable = depositAmount;
         }
-        deposit.totalDeposit = deposit.totalDeposit + depositAmount;
+        deposit.totalDeposit = deposit.totalDeposit.add(depositAmount);
     }
 
     function _capacityCheck(
         bytes32 clusterDns,
         EscrowLib.ResourceUnits memory resourceUnits
     ) internal {
-        resourceCapacityState[clusterDns].resourceOne =
-            resourceCapacityState[clusterDns].resourceOne +
-            resourceUnits.resourceOne;
-        resourceCapacityState[clusterDns].resourceTwo =
-            resourceCapacityState[clusterDns].resourceTwo +
-            resourceUnits.resourceTwo;
-        resourceCapacityState[clusterDns].resourceThree =
-            resourceCapacityState[clusterDns].resourceThree +
-            resourceUnits.resourceThree;
-        resourceCapacityState[clusterDns].resourceFour =
-            resourceCapacityState[clusterDns].resourceFour +
-            resourceUnits.resourceFour;
-        resourceCapacityState[clusterDns].resourceFive =
-            resourceCapacityState[clusterDns].resourceFive +
-            resourceUnits.resourceFive;
-        resourceCapacityState[clusterDns].resourceSix =
-            resourceCapacityState[clusterDns].resourceSix +
-            resourceUnits.resourceSix;
-        resourceCapacityState[clusterDns].resourceSeven =
-            resourceCapacityState[clusterDns].resourceSeven +
-            resourceUnits.resourceSeven;
-        resourceCapacityState[clusterDns].resourceEight =
-            resourceCapacityState[clusterDns].resourceEight +
-            resourceUnits.resourceEight;
+        resourceCapacityState[clusterDns].resourceOne = resourceCapacityState[
+            clusterDns
+        ].resourceOne.add(resourceUnits.resourceOne);
+        resourceCapacityState[clusterDns].resourceTwo = resourceCapacityState[
+            clusterDns
+        ].resourceTwo.add(resourceUnits.resourceTwo);
+        resourceCapacityState[clusterDns].resourceThree = resourceCapacityState[
+            clusterDns
+        ].resourceThree.add(resourceUnits.resourceThree);
+        resourceCapacityState[clusterDns].resourceFour = resourceCapacityState[
+            clusterDns
+        ].resourceFour.add(resourceUnits.resourceFour);
+        resourceCapacityState[clusterDns].resourceFive = resourceCapacityState[
+            clusterDns
+        ].resourceFive.add(resourceUnits.resourceFive);
+        resourceCapacityState[clusterDns].resourceSix = resourceCapacityState[
+            clusterDns
+        ].resourceSix.add(resourceUnits.resourceSix);
+        resourceCapacityState[clusterDns].resourceSeven = resourceCapacityState[
+            clusterDns
+        ].resourceSeven.add(resourceUnits.resourceSeven);
+        resourceCapacityState[clusterDns].resourceEight = resourceCapacityState[
+            clusterDns
+        ].resourceEight.add(resourceUnits.resourceEight);
 
         bool OverLimit = false;
         if (
@@ -493,56 +397,56 @@ contract BaseEscrow is Ownable, EscrowStorage {
             resourceUnits.resourceOne >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceOneUnits
+                .resourceOne
         ) OverLimit = true;
         if (
             resourceUnits.resourceTwo > 1 &&
             resourceUnits.resourceTwo >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceTwoUnits
+                .resourceTwo
         ) OverLimit = true;
         if (
             resourceUnits.resourceThree > 1 &&
             resourceUnits.resourceThree >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceThreeUnits
+                .resourceThree
         ) OverLimit = true;
         if (
             resourceUnits.resourceFour > 1 &&
             resourceUnits.resourceFour >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceFourUnits
+                .resourceFour
         ) OverLimit = true;
         if (
             resourceUnits.resourceFive > 1 &&
             resourceUnits.resourceFive >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceFiveUnits
+                .resourceFive
         ) OverLimit = true;
         if (
             resourceUnits.resourceSix > 1 &&
             resourceUnits.resourceSix >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceSixUnits
+                .resourceSix
         ) OverLimit = true;
         if (
             resourceUnits.resourceSeven > 1 &&
             resourceUnits.resourceSeven >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceSevenUnits
+                .resourceSeven
         ) OverLimit = true;
         if (
             resourceUnits.resourceEight > 1 &&
             resourceUnits.resourceEight >
             IResourceFeed(resourceFeed)
                 .getResourceMaxCapacity(clusterDns)
-                .resourceEightUnits
+                .resourceEight
         ) OverLimit = true;
         require(OverLimit == false);
     }
@@ -555,10 +459,10 @@ contract BaseEscrow is Ownable, EscrowStorage {
         bool grant
     ) internal {
         EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];
-        deposit.totalDeposit = deposit.totalDeposit + amount;
+        deposit.totalDeposit = deposit.totalDeposit.add(amount);
         // If fund's given though grant, make them not withdrawable.
         if (withdrawable == false) {
-            deposit.notWithdrawable = deposit.notWithdrawable + amount;
+            deposit.notWithdrawable = deposit.notWithdrawable.add(amount);
         }
         if (grant == false) _pullStackTokens(amount);
     }
@@ -587,7 +491,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         ) = IDnsClusterMetadataStore(dnsStore).dnsToClusterMetadata(clusterDns);
         if (everything == false) {
             require(amount < deposit.totalDeposit);
-            deposit.totalDeposit = deposit.totalDeposit - amount;
+            deposit.totalDeposit = deposit.totalDeposit.sub(amount);
             withdrawAmount = amount;
         } else {
             withdrawAmount = deposit.totalDeposit.sub(deposit.notWithdrawable);
@@ -682,7 +586,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     ) internal view returns (uint256) {
         uint256 dripRatePerUnit = IResourceFeed(resourceFeed)
             .getResourceDripRateUSDT(clusterDns, resourceName);
-        return dripRatePerUnit * resourceUnits;
+        return dripRatePerUnit.mul(resourceUnits);
     }
 
     function _calcResourceUnitsDripRateSTACK(
@@ -692,7 +596,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     ) internal view returns (uint256) {
         uint256 dripRatePerUnit = IResourceFeed(resourceFeed)
             .getResourceDripRateUSDT(clusterDns, resourceName);
-        return usdtToSTACK(dripRatePerUnit * resourceUnits);
+        return usdtToSTACK(dripRatePerUnit.mul(resourceUnits));
     }
 
     function _pullStackTokens(uint256 amount) internal {
@@ -717,7 +621,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         uint256 amountInWithFee = _amountIn.mul(997);
         uint256 numerator = amountInWithFee.mul(reserveOut);
         uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
-        amountOut = (numerator / denominator);
+        amountOut = numerator.div(denominator);
     }
 
     function stackToUSDT(uint256 _stackAmount)
@@ -755,21 +659,23 @@ contract BaseEscrow is Ownable, EscrowStorage {
         uint256 qualityFactor
     ) internal {
         // Check the quality Facror and reduce a portion of payout if necessery.
-        uint256 utilisedFundsAfterQualityCheck = (qualityFactor *
-            (10**18) *
-            utilisedFunds) /
-            100 /
-            (10**18);
+        uint256 utilisedFundsAfterQualityCheck = qualityFactor
+            .mul(10**18)
+            .mul(utilisedFunds)
+            .div(100)
+            .div(10**18);
 
         if (utilisedFundsAfterQualityCheck > 0) {
             EscrowLib.WithdrawSetting storage withdrawsetup = withdrawSettings[
                 clusterOwner
             ];
             if (withdrawsetup.percent > 0) {
-                uint256 stacktoToken = (utilisedFundsAfterQualityCheck *
-                    withdrawsetup.percent) / 10000;
-                uint256 stackWithdraw = utilisedFundsAfterQualityCheck -
-                    stacktoToken;
+                uint256 stacktoToken = utilisedFundsAfterQualityCheck
+                    .mul(withdrawsetup.percent)
+                    .div(10000);
+                uint256 stackWithdraw = utilisedFundsAfterQualityCheck.sub(
+                    stacktoToken
+                );
 
                 IERC20(stackToken).approve(
                     address(router),
@@ -790,7 +696,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
                 );
             }
 
-            uint256 penalty = utilisedFunds - utilisedFundsAfterQualityCheck;
+            uint256 penalty = utilisedFunds.sub(utilisedFundsAfterQualityCheck);
             if (penalty > 0) {
                 IERC20(stackToken).transfer(dao, penalty);
             }
@@ -828,10 +734,11 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Name of the resource.
      */
 
-    function defineResourceVar(uint16 resouceNr, string memory resourceName)
+    function defineResourceVar(uint8 resouceNr, string memory resourceName)
         public
         onlyOwner
     {
+        require(resouceNr <= 8 && resouceNr != 0);
         resourceVar[resouceNr] = resourceName;
     }
 

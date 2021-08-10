@@ -17,17 +17,6 @@ library EscrowLib {
         uint256 notWithdrawable;
     }
 
-    struct ResourceFees {
-        uint256 resourceOneUnitsFee; // cpuCoresUnits
-        uint256 resourceTwoUnitsFee; // diskSpaceUnits
-        uint256 resourceThreeUnitsFee; // bandwidthUnits
-        uint256 resourceFourUnitsFee; // memoryUnits
-        uint256 resourceFiveUnitsFee;
-        uint256 resourceSixUnitsFee;
-        uint256 resourceSevenUnitsFee;
-        uint256 resourceEightUnitsFee;
-    }
-
     // Address of Token contract.
     // What percentage is exchanged to this token on withdrawl.
     struct WithdrawSetting {

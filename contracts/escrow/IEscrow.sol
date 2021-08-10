@@ -7,5 +7,5 @@ interface IEscrow {
         external
         returns (EscrowLib.Deposit memory);
 
-    function getResouceVar(uint16 _id) external returns (string memory);
+    function getResouceVar(uint8 _id) external returns (string memory);
 }

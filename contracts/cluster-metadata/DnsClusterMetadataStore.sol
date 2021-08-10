@@ -47,18 +47,14 @@ contract DnsClusterMetadataStore is Ownable {
     /*
      * @title - Modifies the staking contract Address
      * @param deployed Address of Staking Contract
-     * @dev Could only be called by the Owner of contract
-     */
-    function setAddressSetting(address _stakingContract) public onlyOwner {
-        stakingContract = _stakingContract;
-    }
-
-    /*
-     * @title Modifies the escrow contract Address
      * @param deployed Address of Escrow Contract
      * @dev Could only be called by the Owner of contract
      */
-    function setEscrowContract(address _escrow) public onlyOwner {
+    function setAddressSetting(address _stakingContract, address _escrow)
+        public
+        onlyOwner
+    {
+        stakingContract = _stakingContract;
         escrowAddress = _escrow;
     }
 
@@ -148,6 +144,7 @@ contract DnsClusterMetadataStore is Ownable {
      */
     function downvoteCluster(bytes32 _dns) public {
         require(clusterUpvotes[_dns][msg.sender] > 0, "Not a upvoter");
+        
         clusterUpvotes[_dns][msg.sender] = clusterUpvotes[_dns][msg.sender] - 1;
         dnsToClusterMetadata[_dns].downvotes += 1;
     }
@@ -171,16 +168,13 @@ contract DnsClusterMetadataStore is Ownable {
         uint256 resourceUnits
     ) internal view returns (uint256) {
         return
-            (resourceUnits * 1e18) /
+            resourceUnits *
             resourceFeed.getResourceVotingWeight(clusterDns, name);
     }
 
     /*
      * @title Fetches total number of votes based on the resources
-     * @param number of cpu core units
-     * @param number of disk space units
-     * @param number of bandwidth units
-     * @param number of memory units
+
      * @return number of votes
      */
     function getTotalVotes(
@@ -194,27 +188,22 @@ contract DnsClusterMetadataStore is Ownable {
         uint256 resourceEightUnits,
         bytes32 clusterDns
     ) public returns (uint256 votes) {
-        votes = _calculateVotesPerResource(
-            clusterDns,
-            IEscrow(escrowAddress).getResouceVar(1),
-            resourceOneUnits
-        );
         votes =
-            votes +
+            _calculateVotesPerResource(
+                clusterDns,
+                IEscrow(escrowAddress).getResouceVar(1),
+                resourceOneUnits
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(2),
                 resourceTwoUnits
-            );
-        votes =
-            votes +
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(3),
                 resourceThreeUnits
-            );
-        votes =
-            votes +
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(4),
@@ -226,26 +215,20 @@ contract DnsClusterMetadataStore is Ownable {
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(5),
                 resourceFiveUnits
-            );
-        votes =
-            votes +
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(6),
                 resourceSixUnits
-            );
-        votes =
-            votes +
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
                 IEscrow(escrowAddress).getResouceVar(7),
                 resourceSevenUnits
-            );
-        votes =
-            votes +
+            ) +
             _calculateVotesPerResource(
                 clusterDns,
-                IEscrow(escrowAddress).getResouceVar(7),
+                IEscrow(escrowAddress).getResouceVar(8),
                 resourceEightUnits
             );
     }

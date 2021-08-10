@@ -9,8 +9,8 @@ contract EscrowStorage {
     address internal staking;
     address public dao;
     address public gov;
-    uint256 public govFee;
-    uint256 public daoFee;
+    uint8 public govFee;
+    uint8 public daoFee;
     uint256 public communityDeposits;
     address internal dnsStore;
     IUniswapV2Factory internal factory;
@@ -20,10 +20,9 @@ contract EscrowStorage {
     address internal oracle;
     uint256 internal minPurchase;
 
-    mapping(uint16 => string) internal resourceVar;
-    mapping(bytes32 => EscrowLib.ResourceUnits) public resourceCapacityState;
-    mapping(string => EscrowLib.ResourceFees) public fixedResourceFee;
+    mapping(uint8 => string) internal resourceVar;
     mapping(address => EscrowLib.WithdrawSetting) internal withdrawSettings;
     mapping(address => mapping(bytes32 => EscrowLib.Deposit)) internal deposits;
+    mapping(bytes32 => EscrowLib.ResourceUnits) public resourceCapacityState;
     mapping(bytes32 => address[]) public clusterUsers;
 }
