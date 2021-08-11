@@ -4,10 +4,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../escrow/IEscrow.sol";
 import "../resource-feed/IResourceFeed.sol";
 import "../escrow/EscrowLib.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /// @title DnsClusterMetadataStore is a Contract which is ownership functionality
 /// @notice Used for maintaining state of Clusters & there voting
 contract DnsClusterMetadataStore is Ownable {
+    using SafeMath for uint256;
     address public stakingContract;
     address public escrowAddress;
     IResourceFeed public resourceFeed;
@@ -26,6 +28,7 @@ contract DnsClusterMetadataStore is Ownable {
     }
 
     mapping(bytes32 => mapping(address => uint256)) public clusterUpvotes;
+    mapping(bytes32 => mapping(address => uint256)) public clusterDownvotes;
     mapping(bytes32 => ClusterMetadata) public dnsToClusterMetadata;
 
     /*
@@ -131,10 +134,19 @@ contract DnsClusterMetadataStore is Ownable {
             _dns
         );
         require(
-            clusterUpvotes[_dns][msg.sender] < votingCapacity,
+            clusterUpvotes[_dns][msg.sender] <= votingCapacity,
             "Already upvoted"
         );
-        clusterUpvotes[_dns][msg.sender] = clusterUpvotes[_dns][msg.sender] + 1;
+
+        if (
+            clusterDownvotes[_dns][msg.sender] > 0 &&
+            dnsToClusterMetadata[_dns].downvotes > 0
+        ) {
+            clusterDownvotes[_dns][msg.sender] -= 1;
+            dnsToClusterMetadata[_dns].downvotes -= 1;
+        }
+
+        clusterUpvotes[_dns][msg.sender] += 1;
         dnsToClusterMetadata[_dns].upvotes += 1;
     }
 
@@ -143,9 +155,35 @@ contract DnsClusterMetadataStore is Ownable {
      * @param dns name of the cluster
      */
     function downvoteCluster(bytes32 _dns) public {
-        require(clusterUpvotes[_dns][msg.sender] > 0, "Not a upvoter");
-        
-        clusterUpvotes[_dns][msg.sender] = clusterUpvotes[_dns][msg.sender] - 1;
+        EscrowLib.Deposit memory deposit = IEscrow(escrowAddress).getDeposits(
+            msg.sender,
+            _dns
+        );
+
+        uint256 votingCapacity = getTotalVotes(
+            deposit.resourceOneUnits,
+            deposit.resourceTwoUnits,
+            deposit.resourceThreeUnits,
+            deposit.resourceFourUnits, // memoryUnits
+            deposit.resourceFiveUnits,
+            deposit.resourceSixUnits,
+            deposit.resourceSevenUnits,
+            deposit.resourceEightUnits,
+            _dns
+        );
+        require(
+            clusterDownvotes[_dns][msg.sender] <= votingCapacity,
+            "Already downVoted"
+        );
+
+        if (
+            clusterUpvotes[_dns][msg.sender] > 0 &&
+            dnsToClusterMetadata[_dns].upvotes > 0
+        ) {
+            clusterUpvotes[_dns][msg.sender] -= 1;
+            dnsToClusterMetadata[_dns].upvotes -= 1;
+        }
+        clusterDownvotes[_dns][msg.sender] += 1;
         dnsToClusterMetadata[_dns].downvotes += 1;
     }
 
@@ -168,8 +206,9 @@ contract DnsClusterMetadataStore is Ownable {
         uint256 resourceUnits
     ) internal view returns (uint256) {
         return
-            resourceUnits *
-            resourceFeed.getResourceVotingWeight(clusterDns, name);
+            resourceUnits
+                .mul(resourceFeed.getResourceVotingWeight(clusterDns, name))
+                .div(10**18);
     }
 
     /*

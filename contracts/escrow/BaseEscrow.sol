@@ -170,6 +170,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         EscrowLib.Deposit storage deposit = deposits[depositer][clusterDns];
         uint256 depositAmount = deposit.totalDeposit;
         require(depositAmount > 0);
+        reduceClusterCap(clusterDns, depositer);
         delete deposits[depositer][clusterDns];
         IERC20(stackToken).transfer(dao, deposit.totalDeposit);
     }
