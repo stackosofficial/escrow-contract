@@ -80,7 +80,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @param Updated Platform DAO Fee
      * @dev Could only be invoked by the contract owner
      */
-    function setVariableFees(uint8 _govFee, uint8 _daoFee) public onlyOwner {
+    function setVariableFees(uint16 _govFee, uint16 _daoFee) public onlyOwner {
         govFee = _govFee;
         daoFee = _daoFee;
     }

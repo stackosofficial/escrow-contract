@@ -9,8 +9,8 @@ contract EscrowStorage {
     address internal staking;
     address public dao;
     address public gov;
-    uint8 public govFee;
-    uint8 public daoFee;
+    uint16 public govFee;
+    uint16 public daoFee;
     uint256 public communityDeposits;
     address internal dnsStore;
     IUniswapV2Factory internal factory;

@@ -192,20 +192,24 @@ contract DnsClusterMetadataStore is Ownable {
      * @param dns name
      * @dev Could only be invoked by the contract owner
      */
-    function markClusterAsDefaulter(bytes32 _dns) public onlyOwner {
-        require(
-            dnsToClusterMetadata[_dns].clusterOwner != address(0),
-            "Cluster not found"
-        );
-        dnsToClusterMetadata[_dns].isDefaulter = true;
-    }
+    //  Removed for this release.
+    // function markClusterAsDefaulter(bytes32 _dns) public onlyOwner {
+    //     require(
+    //         dnsToClusterMetadata[_dns].clusterOwner != address(0),
+    //         "Cluster not found"
+    //     );
+    //     dnsToClusterMetadata[_dns].isDefaulter = true;
+    // }
 
     function _calculateVotesPerResource(
         bytes32 clusterDns,
         string memory name,
         uint256 resourceUnits
     ) internal view returns (uint256) {
-        require(resourceFeed.getResourceVotingWeight(clusterDns, name) != 0, "Voting not allowed");
+        require(
+            resourceFeed.getResourceVotingWeight(clusterDns, name) != 0,
+            "Voting not allowed"
+        );
         return
             resourceUnits
                 .mul(resourceFeed.getResourceVotingWeight(clusterDns, name))
