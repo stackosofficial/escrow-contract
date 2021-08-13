@@ -157,7 +157,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
      * @title Emergency refund
      * @param Depositer Address
      * @param ClusterDNS that is being settled
-     * @dev Could only be invoked by the contract owner
+     * @dev Could only be invoked by the cluster owner
      */
     function EmergencyRefundByClusterOwner(
         address depositer,
@@ -172,7 +172,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         require(depositAmount > 0);
         reduceClusterCap(clusterDns, depositer);
         delete deposits[depositer][clusterDns];
-        IERC20(stackToken).transfer(dao, deposit.totalDeposit);
+        IERC20(stackToken).transfer(depositer, depositAmount);
     }
 
     /*
@@ -292,7 +292,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     }
 
     /*
-     * @title Deduct Fixed and Variable Fees
+     * @title Deduct Variable Fees
      * @param Utilised funds in stack
      * @param Time since the last deposit or settelment
      * @param Resource Units.
@@ -711,7 +711,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
     function _swapTokens(
         address _FromTokenContractAddress,
         address _ToTokenContractAddress,
-        uint256 amountOutMin,
+        uint256 amountOut,
         uint256 amountInMax,
         address forWallet
     ) internal returns (uint256 tokenBought) {
@@ -721,7 +721,7 @@ contract BaseEscrow is Ownable, EscrowStorage {
         path[2] = _ToTokenContractAddress;
 
         tokenBought = IUniswapV2Router02(router).swapExactTokensForTokens(
-            amountOutMin,
+            amountOut,
             amountInMax,
             path,
             forWallet,

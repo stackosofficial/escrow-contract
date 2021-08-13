@@ -70,7 +70,7 @@ contract StackEscrow is BaseEscrow {
                 settleAccounts(msg.sender, clusterDns);
                 reduceClusterCap(clusterDns, msg.sender);
             } else {
-                require(minPurchase >= 0);
+                require(depositAmount >= minPurchase);
             }
         }
 

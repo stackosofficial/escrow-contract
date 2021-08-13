@@ -205,6 +205,7 @@ contract DnsClusterMetadataStore is Ownable {
         string memory name,
         uint256 resourceUnits
     ) internal view returns (uint256) {
+        require(resourceFeed.getResourceVotingWeight(clusterDns, name) != 0, "Voting not allowed");
         return
             resourceUnits
                 .mul(resourceFeed.getResourceVotingWeight(clusterDns, name))
