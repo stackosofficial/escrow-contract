@@ -32,7 +32,11 @@ module.exports = {
    *
    * $ truffle test --network <network-name>
    */
-  plugins: ["truffle-contract-size"],
+   api_keys: {
+    bscscan: 'IWJ85ZYMYPF4FPWZQFXSG9GQBHQTHSWXGD',
+    etherscan: '3QJ6JYQ7QCECPKK2MDZ2W9U3YBKUJ3GF24'
+  },
+  plugins: ["truffle-contract-size","truffle-plugin-verify"],
   networks: {
     // Useful for testing. The `development` name is special - truffle uses it by default
     // if it's defined here and no other network is specified at the command line.
@@ -127,9 +131,10 @@ module.exports = {
           0,
           1
         ),
-      network_id: 56, // Kovan's id
+      network_id: 56, // BSCMainnet's id
       confirmations: 2, // # of confs to wait between deployments. (default: 0)
       timeoutBlocks: 2000, // # of blocks before a deployment times out  (minimum/default: 50)
+      gasPrice: 6000000000, // 6 gwei
     },
     // Useful for private networks
     // private: {
@@ -151,10 +156,10 @@ module.exports = {
       // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
       // settings: {          // See the solidity docs for advice about optimization and evmVersion
       //  optimizer: {
-      //    enabled: false,
-      //    runs: 200
+      //    enabled: true,
+      //    runs: 20
       //  },
-      //  evmVersion: "byzantium"
+      // evmVersion: "byzantium"
       // }
     },
   },

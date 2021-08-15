@@ -19,6 +19,7 @@ contract StackOracle {
     using FixedPoint for *;
 
     uint256 public constant PERIOD = 24 hours;
+ //   uint256 public constant PERIOD = 1 minutes;
 
     IUniswapV2Pair immutable pairWETHSTACK;
     IUniswapV2Pair immutable pairWETHUSDT;

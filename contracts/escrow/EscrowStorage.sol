@@ -7,8 +7,8 @@ contract EscrowStorage {
     address internal stackToken;
     address internal resourceFeed;
     address internal staking;
-    address public dao;
-    address public gov;
+    address internal dao;
+    address internal gov;
     uint16 public govFee;
     uint16 public daoFee;
     uint256 public communityDeposits;
