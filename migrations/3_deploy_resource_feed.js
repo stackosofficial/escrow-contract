@@ -1,7 +1,7 @@
 const ResourceFeed = artifacts.require('ResourceFeed');
 const StackToken = artifacts.require('StackToken');
-const usdtAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
-const _stackTokenAddress = '0x6855f7bb6287F94ddcC8915E37e73a3c9fEe5CF3';
+const usdtAddress = '0x55d398326f99059ff775485246999027b3197955';
+const _stackTokenAddress = '0x6855f7bb6287f94ddcc8915e37e73a3c9fee5cf3';
 
 module.exports = function (deployer) {
   deployer.then(async () => {

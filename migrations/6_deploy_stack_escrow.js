@@ -6,8 +6,8 @@ const DnsClusterMetadataStore = artifacts.require("DnsClusterMetadataStore");
 const OracleFeed = artifacts.require("StackOracle");
 const EscrowLib = artifacts.require("EscrowLib");
 
-const dao = "0xC6cDFD798dDa2Cc4Ca2601975366dc1ddF0Bc7E6";
-const gov = "0xC6cDFD798dDa2Cc4Ca2601975366dc1ddF0Bc7E6";
+const dao = "0xE22195fCf831427912bB6681dBbD5B050814e154";
+const gov = "0xE22195fCf831427912bB6681dBbD5B050814e154";
 
 // ETHEREUM MAINNET - When running test, uncomment.
 // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -28,10 +28,10 @@ const UniswapV2RouterAddress = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
 
 // BSC Addresses
 const _stackTokenAddress = "0x6855f7bb6287F94ddcC8915E37e73a3c9fEe5CF3";
-const _resourceFeedAddress = "0x91EA7827647475D0228957d396c5795023d6d4CA";
+const _resourceFeedAddress = "0x4f355262C63f6E222754D32f20F90913EB2Ba646";
 const _dnsClusterMetadataStoreAddress =
-  "0x2B01ADcA9A6b063f8FE7a4BE044De3553dF0F1EF";
-const _stakingAddress = "0x8926e5A2aAC634B394744E77348d5b99b311c49e";
+  "0x1385B44838EC73b8934e815225bD65b789D3c1D2";
+const _stakingAddress = "0xbfb53d536f4B2B767a76C9E3cb9027aB4E1eCb15";
 
 module.exports = function (deployer) {
   deployer.then(async () => {
@@ -44,23 +44,23 @@ module.exports = function (deployer) {
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     const oracle = await deployer.deploy(OracleFeed, lpstack, lpusdt, WETH);
 
-    await deployer.deploy(EscrowLib);
-    await deployer.link(EscrowLib, StackEscrow);
+    // await deployer.deploy(EscrowLib);
+    // await deployer.link(EscrowLib, StackEscrow);
 
-    const stackEscrow = await deployer.deploy(
-      StackEscrow,
-      _stackTokenAddress, //stackToken.address,
-      _resourceFeedAddress, //resourceFeed.address,
-      _stakingAddress, //staking.address,
-      _dnsClusterMetadataStoreAddress, //dnsClusterMetadataStore.address,
-      UniswapV2FactoryAddress,
-      UniswapV2RouterAddress,
-      dao,
-      gov,
-      WETH,
-      USDT,
-      oracle.address
-    );
+    // const stackEscrow = await deployer.deploy(
+    //   StackEscrow,
+    //   _stackTokenAddress, //stackToken.address,
+    //   _resourceFeedAddress, //resourceFeed.address,
+    //   _stakingAddress, //staking.address,
+    //   _dnsClusterMetadataStoreAddress, //dnsClusterMetadataStore.address,
+    //   UniswapV2FactoryAddress,
+    //   UniswapV2RouterAddress,
+    //   dao,
+    //   gov,
+    //   WETH,
+    //   USDT,
+    //   oracle.address
+    // );
 
     // USE FOR TESTING ON MAINNET
     // const stackEscrow = await deployer.deploy(
@@ -80,18 +80,18 @@ module.exports = function (deployer) {
 
     // Setting up the contract below.
 
-    await stackEscrow.defineResourceVar(1, "cpu");
-    await stackEscrow.defineResourceVar(2, "memory");
-    await stackEscrow.defineResourceVar(3, "disk");
-    await stackEscrow.defineResourceVar(4, "bandwidth");
-    await stackEscrow.defineResourceVar(5, "undefined");
-    await stackEscrow.defineResourceVar(6, "undefined");
-    await stackEscrow.defineResourceVar(7, "undefined");
-    await stackEscrow.defineResourceVar(8, "undefined");
+    // await stackEscrow.defineResourceVar(1, "cpu");
+    // await stackEscrow.defineResourceVar(2, "memory");
+    // await stackEscrow.defineResourceVar(3, "disk");
+    // await stackEscrow.defineResourceVar(4, "bandwidth");
+    // await stackEscrow.defineResourceVar(5, "undefined");
+    // await stackEscrow.defineResourceVar(6, "undefined");
+    // await stackEscrow.defineResourceVar(7, "undefined");
+    // await stackEscrow.defineResourceVar(8, "undefined");
 
-    await stackEscrow.setFixedFees("dao", [10, 10, 10, 10, 10, 10, 10, 10]);
-    await stackEscrow.setFixedFees("gov", [10, 10, 10, 10, 0, 0, 0, 0]);
+    // await stackEscrow.setFixedFees("dao", [0, 0, 0, 0, 0, 0, 0, 0]);
+    // await stackEscrow.setFixedFees("gov", [0, 0, 0, 0, 0, 0, 0, 0]);
 
-    await stackEscrow.setVariableFees("100", "100");
+    // await stackEscrow.setVariableFees("250", "250");
   });
 };
