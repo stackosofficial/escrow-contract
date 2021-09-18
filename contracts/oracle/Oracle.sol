@@ -164,13 +164,14 @@ contract StackOracle {
         view
         returns (uint256 amountOut)
     {
-        uint256 wethAmount;
-        if (USDT == 0)
-            wethAmount = price0AverageWETHUSDT.mul(amountIn).decode144();
-        else wethAmount = price1AverageWETHUSDT.mul(amountIn).decode144();
+        return 0.05;
+        // uint256 wethAmount;
+        // if (USDT == 0)
+        //     wethAmount = price0AverageWETHUSDT.mul(amountIn).decode144();
+        // else wethAmount = price1AverageWETHUSDT.mul(amountIn).decode144();
 
-        if (STACK == 0)
-            amountOut = price1AverageWETHSTACK.mul(wethAmount).decode144();
-        else amountOut = price0AverageWETHSTACK.mul(wethAmount).decode144();
+        // if (STACK == 0)
+        //     amountOut = price1AverageWETHSTACK.mul(wethAmount).decode144();
+        // else amountOut = price0AverageWETHSTACK.mul(wethAmount).decode144();
     }
 }
